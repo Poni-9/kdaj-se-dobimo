@@ -161,6 +161,18 @@
   .metas span .ic{margin-right:1px;opacity:.75}
   .foot button .ic,.voteb .ic{width:15px;height:15px}
   .best .dot{width:12px;height:12px;border-radius:50%;flex:none}
+  /* načrti + najboljši dnevi */
+  .sectitle{font-weight:800;font-size:15px;margin:0 2px 10px;display:flex;align-items:center;gap:8px}
+  .plan{display:flex;gap:12px;align-items:flex-start;padding:14px 16px}
+  .plan .date{flex:none;width:54px;text-align:center;background:var(--brand-soft);color:var(--brand-ink);border-radius:12px;padding:8px 0;line-height:1.05}
+  .plan .date .dnum{font-size:20px;font-weight:800}
+  .plan .date .dmon{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+  .bd{display:flex;align-items:center;gap:12px;padding:10px 4px;border-top:1px solid var(--line)}
+  .bd:first-of-type{border-top:0}
+  .bd .num{flex:none;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:16px;background:#eef0f6;color:var(--muted)}
+  .bd .num.g{background:var(--green);color:#fff}
+  .btn.sm{padding:8px 12px;border-radius:11px;font-size:13px;box-shadow:none}
+  .cell.plan-day::before{content:"";position:absolute;top:5px;left:6px;width:7px;height:7px;border-radius:2px;background:var(--brand)}
 </style>
 </head>
 <body>
@@ -233,9 +245,20 @@ const Logic = (function(){
     const n = Math.floor(rand()*900+100);
     return w+"-"+n;
   }
+  function plansOf(events){ return (events||[]).filter(e=>e && e.target_day); }
+  function ideasOf(events){ return (events||[]).filter(e=>e && !e.target_day); }
+  function upcomingPlans(events, todayStr){
+    return plansOf(events).filter(e=> e.target_day>=todayStr)
+      .sort((a,b)=> a.target_day<b.target_day?-1:(a.target_day>b.target_day?1:0));
+  }
+  function bestDates(members, busySet, dayStrs, threshold, limit){
+    const arr = dayStrs.map(ds=>{ const free=freeCountForDay(members,busySet,ds); return {day:ds, free, green:isGreen(free,threshold)}; });
+    arr.sort((a,b)=> b.free-a.free || (a.day<b.day?-1:1));
+    return arr.slice(0, limit||5);
+  }
   const API = {MONTHS,DOW_SHORT,DOW_LONG,pad2,ymd,parseYMD,weekdayMon0,busyKey,
     freeCountForDay,isGreen,whoFree,whoBusy,bestWeekday,monthMatrix,monthDays,
-    voteCounts,sortEventsByVotes,genCode};
+    voteCounts,sortEventsByVotes,genCode,plansOf,ideasOf,upcomingPlans,bestDates};
   if (typeof module!=="undefined" && module.exports) module.exports = API;
   return API;
 })();
@@ -260,7 +283,8 @@ const IC={
   check:_svg+'<path d="M5 12l4 4L19 7"/></svg>',
   pin:_svg+'<path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg>',
   user:_svg+'<circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>',
-  bag:_svg+'<path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>'
+  bag:_svg+'<path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  star:'<svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3.2l2.6 5.6 6 .7-4.5 4.1 1.2 5.9L12 16.9 6.7 19.5l1.2-5.9L3.4 9.5l6-.7z"/></svg>'
 };
 
 /* ===================== SHRAMBA: lokalno ===================== */
@@ -386,7 +410,7 @@ function render(){
   </div>
   <div class="seg">
     <button class="${state.view==="calendar"?"on":""}" data-act="tab" data-v="calendar">Koledar</button>
-    <button class="${state.view==="events"?"on":""}" data-act="tab" data-v="events">Dogodki</button>
+    <button class="${state.view==="events"?"on":""}" data-act="tab" data-v="events">Ideje</button>
   </div>`;
 
   if(state.error){
@@ -405,26 +429,67 @@ function render(){
   const ni=document.getElementById("nameInput"); if(ni) ni.focus();
 }
 
+function planCard(ev){
+  const d=state.data;
+  const goers=d.votes.filter(v=>v.event_id===ev.id).map(v=>v.voter);
+  const iGo=state.me && goers.includes(state.me.name);
+  const dt=L.parseYMD(ev.target_day);
+  const meta=[]; if(ev.location) meta.push(esc(ev.location)); if(ev.equipment) meta.push(esc(ev.equipment)); if(ev.needs_money) meta.push("€ "+esc(ev.budget||"denar"));
+  return `<div class="card plan">
+    <div class="date"><div class="dnum">${dt.getDate()}</div><div class="dmon">${L.MONTHS[dt.getMonth()].slice(0,3)}</div></div>
+    <div style="flex:1;min-width:0">
+      <div class="t" style="font-weight:800">${esc(ev.title)}</div>
+      <div class="hint">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}${meta.length?" · "+meta.join(" · "):""}</div>
+      <div class="by">${goers.length?("Gredo ("+goers.length+"): "+esc(goers.join(", "))):"Še nihče ni potrdil"}</div>
+    </div>
+    <div style="text-align:center">
+      <button class="voteb ${iGo?"on":""}" data-act="vote" data-id="${ev.id}"><span class="n">${goers.length}</span><span class="lab">${IC.check}grem</span></button>
+      ${state.me&&ev.proposer===state.me.name?`<div style="margin-top:6px"><button class="muted" style="font-size:11px;font-weight:700" data-act="delev" data-id="${ev.id}">prekliči</button></div>`:""}
+    </div>
+  </div>`;
+}
+
 function renderCalendar(){
   const d=state.data, thr=d.group.threshold||0, members=d.members, bs=busySet();
   const {y,m}=state.ym;
-  const cells=L.monthMatrix(y,m), todayStr=L.ymd(new Date());
+  const now=new Date(), todayStr=L.ymd(now);
+  const cells=L.monthMatrix(y,m);
+  const plannedDays=new Set(L.plansOf(d.events).map(e=>e.target_day));
   const dow=L.DOW_SHORT.map(x=>`<div class="dow">${x}</div>`).join("");
   let grid="";
   for(const dt of cells){
     const ds=L.ymd(dt), out=dt.getMonth()!==m, past=ds<todayStr;
     const free=L.freeCountForDay(members,bs,ds), green=L.isGreen(free,thr);
     const iAmBusy = state.me && bs.has(state.me.id+"|"+ds);
-    const cls=["cell"]; if(out)cls.push("out"); if(!out&&green)cls.push("enough"); if(!out&&iAmBusy)cls.push("mine"); if(ds===todayStr)cls.push("today"); if(!out&&past)cls.push("past");
+    const cls=["cell"]; if(out)cls.push("out"); if(!out&&green)cls.push("enough"); if(!out&&iAmBusy)cls.push("mine"); if(!out&&plannedDays.has(ds))cls.push("plan-day"); if(ds===todayStr)cls.push("today"); if(!out&&past)cls.push("past");
     grid += `<div class="${cls.join(" ")}" ${out?"":`data-act="day" data-d="${ds}"`}>
       <span class="d">${dt.getDate()}</span>
       ${out?"":`<button class="c" data-act="dayinfo" data-d="${ds}">${free}</button>`}
     </div>`;
   }
 
+  // NAŠI NAČRTI (dogovorjena druženja)
+  const upcoming=L.upcomingPlans(d.events, todayStr);
+  const plansHtml = upcoming.length? `<div style="margin-bottom:16px">
+      <div class="sectitle"><span class="sq" style="background:var(--brand);width:13px;height:13px"></span>Naši načrti</div>
+      <div class="stack">${upcoming.map(planCard).join("")}</div>
+    </div>`:"";
+
+  // NAJBOLJŠI DNEVI (pregled)
   let days=L.monthDays(y,m);
-  const isCurrent=(y===new Date().getFullYear() && m===new Date().getMonth());
+  const isCurrent=(y===now.getFullYear() && m===now.getMonth());
   if(isCurrent) days=days.filter(ds=>ds>=todayStr);
+  const bd=L.bestDates(members,bs,days,thr,5).filter(x=>x.free>0);
+  const bestDaysHtml = (members.length && bd.length)? `<div class="card pad" style="margin-top:14px">
+      <div class="sectitle"><span style="color:#e8a91d;display:inline-flex">${IC.star}</span>Najboljši dnevi za druženje</div>
+      ${bd.map(x=>{ const dt=L.parseYMD(x.day); return `<div class="bd">
+          <div class="num ${x.green?'g':''}" data-act="dayinfo" data-d="${x.day}" style="cursor:pointer">${x.free}</div>
+          <div style="flex:1;cursor:pointer" data-act="dayinfo" data-d="${x.day}"><div style="font-weight:700">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}</div><div class="hint">${x.free} od ${members.length} prostih${plannedDays.has(x.day)?" · že dogovorjeno":""}</div></div>
+          <button class="btn sm" data-act="planday" data-d="${x.day}">Dobimo se</button>
+        </div>`; }).join("")}
+    </div>`:"";
+
+  // razčlenitev po dnevih v tednu
   const rank=L.bestWeekday(members,bs,days,thr), top=rank[0];
   const maxAvg=Math.max(1,...rank.map(r=>r.avg));
   const wkRows=rank.map(r=>`<div class="wk">
@@ -432,22 +497,19 @@ function renderCalendar(){
       <div class="barbg"><div class="bar" style="width:${Math.round(r.avg/maxAvg*100)}%;${r===top?'background:var(--green)':''}"></div></div>
       <div class="val">${r.avg.toFixed(1)}${r.meet?` · ${r.meet}✓`:""}</div>
     </div>`).join("");
-  const hasData=members.length>0;
-  const bestBar = (top&&top.n&&hasData)
-    ? `<div class="best"><span class="dot" style="background:var(--green)"></span><div>Največ vas je prostih ob <b>${L.DOW_LONG[top.weekday]}</b> — v povprečju <b>${top.avg.toFixed(1)}</b> ljudi${top.meet?`, ${top.meet}× dovolj za druženje`:""}.</div></div>`
-    : `<div class="best empty"><span class="dot" style="background:#c7cbd8"></span><div>Ko folk označi razpoložljivost, se tu pokaže najboljši reden dan.</div></div>`;
 
   return `
+  ${plansHtml}
   <div class="card pad">
     <div class="month">
       <button data-act="prev">‹</button><b>${L.MONTHS[m]} ${y}</b><button data-act="next">›</button>
     </div>
-    <div class="instr">Tapni dneve, ko <b>ne moreš</b>. <span class="sq" style="background:var(--green)"></span> = vas je dovolj · tapni številko za kdo je prost.</div>
+    <div class="instr">Tapni dneve, ko <b>ne moreš</b>. <span class="sq" style="background:var(--green)"></span> dovolj vas · <span class="sq" style="background:var(--brand)"></span> dogovorjeno · tapni številko za kdo.</div>
     <div class="grid" style="margin-bottom:7px">${dow}</div>
     <div class="grid">${grid}</div>
   </div>
 
-  ${bestBar}
+  ${bestDaysHtml}
 
   <div class="card foot">
     <button data-act="members">${IC.users}${members.length} v skupini</button>
@@ -463,8 +525,8 @@ function renderCalendar(){
 
 function renderEvents(){
   const d=state.data, counts=L.voteCounts(d.votes);
-  const events=L.sortEventsByVotes(d.events,counts);
-  const list = events.length? events.map(ev=>{
+  const ideas=L.sortEventsByVotes(L.ideasOf(d.events),counts);
+  const list = ideas.length? ideas.map(ev=>{
     const c=counts[ev.id]||0;
     const voters=d.votes.filter(v=>v.event_id===ev.id).map(v=>v.voter);
     const mine=state.me && voters.includes(state.me.name);
@@ -473,27 +535,27 @@ function renderEvents(){
     if(ev.min_people) metas.push(`${IC.user}min. ${esc(ev.min_people)}`);
     if(ev.equipment) metas.push(`${IC.bag}${esc(ev.equipment)}`);
     if(ev.needs_money) metas.push(`<b style="font-weight:800">€</b> ${esc(ev.budget||"denar")}`);
-    if(ev.target_day) metas.push(`${IC.cal}${esc(ev.target_day)}`);
     return `<div class="card ev">
       <div class="row" style="align-items:flex-start;justify-content:space-between;gap:12px">
         <div style="flex:1">
           <div class="t">${esc(ev.title)}</div>
           ${ev.description?`<div class="desc">${esc(ev.description)}</div>`:""}
           ${metas.length?`<div class="metas">${metas.map(x=>`<span>${x}</span>`).join("")}</div>`:""}
-          <div class="by">Predlagal: ${esc(ev.proposer||"?")}${voters.length?` · glasovali: ${esc(voters.join(", "))}`:""}</div>
+          <div class="by">Predlagal: ${esc(ev.proposer||"?")}${voters.length?` · za: ${esc(voters.join(", "))}`:""}</div>
+          <div style="margin-top:10px"><button class="btn ghost sm" data-act="schedule" data-id="${ev.id}" data-title="${esc(ev.title)}">${IC.cal}Določi termin</button></div>
         </div>
         <div style="text-align:center">
-          <button class="voteb ${mine?"on":""}" data-act="vote" data-id="${ev.id}"><span class="n">${c}</span><span class="lab">${IC.check}grem</span></button>
+          <button class="voteb ${mine?"on":""}" data-act="vote" data-id="${ev.id}"><span class="n">${c}</span><span class="lab">${IC.check}za</span></button>
           ${state.me&&ev.proposer===state.me.name?`<div style="margin-top:8px"><button class="muted" style="font-size:12px;font-weight:700" data-act="delev" data-id="${ev.id}">izbriši</button></div>`:""}
         </div>
       </div>
     </div>`;
-  }).join(""):`<div class="empty"><span class="em">${IC.cal}</span>Še ni predlogov.<br>Dodaj prvega!</div>`;
+  }).join(""):`<div class="empty"><span class="em">${IC.cal}</span>Še ni idej.<br>Dodaj prvo!</div>`;
 
   return `
   <div class="evhead row" style="justify-content:space-between;gap:10px">
-    <div><h2>Kaj bomo počeli?</h2><p class="muted">Vsak predlaga, folk glasuje. Največ glasov zmaga.</p></div>
-    <button class="btn" data-act="newev">＋ Nov</button>
+    <div><h2>Kaj bi počeli?</h2><p class="muted">Zberi ideje, folk glasuje »za«. Termin dogovorite z gumbom »Določi termin« ali na koledarju.</p></div>
+    <button class="btn" data-act="newev">＋ Ideja</button>
   </div>
   <div class="stack">${list}</div>`;
 }
@@ -507,15 +569,20 @@ function dayInfoOverlay(ds){
   const free=L.whoFree(d.members,bs,ds), busy=L.whoBusy(d.members,bs,ds);
   const dt=L.parseYMD(ds), iAmBusy=state.me && bs.has(state.me.id+"|"+ds);
   const title=`${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}`;
+  const dayPlans=d.events.filter(e=>e.target_day===ds);
   return `<div class="sheet"><div class="grab"></div><div class="pad">
     <div class="row" style="justify-content:space-between"><h3>${title}</h3><button class="close" data-act="ovclose">✕</button></div>
     <div class="lab" style="margin:18px 0 8px;color:var(--green-ink);display:flex;align-items:center;gap:8px"><span class="sq" style="background:var(--green)"></span>Lahko pridejo (${free.length})</div>
     <div class="peep">${free.length?free.map(m=>`<span class="tag free">${esc(m.name)}</span>`).join(""):'<span class="tag grey">nihče</span>'}</div>
     <div class="lab" style="margin:18px 0 8px;color:#d23a56;display:flex;align-items:center;gap:8px"><span class="sq" style="background:var(--pink)"></span>Ne morejo (${busy.length})</div>
     <div class="peep">${busy.length?busy.map(m=>`<span class="tag busy">${esc(m.name)}</span>`).join(""):'<span class="tag grey">nihče</span>'}</div>
-    <div style="margin-top:20px">${state.me
-      ? `<button class="btn wide" data-act="daytoggle" data-d="${ds}" ${iAmBusy?'':'style="background:var(--pink)"'}>${iAmBusy?"Vendarle lahko pridem":"Ta dan ne morem"}</button>`
-      : '<div class="muted" style="text-align:center">Vpiši ime zgoraj, da označiš razpoložljivost.</div>'}</div>
+    ${dayPlans.length?`<div class="lab" style="margin:18px 0 8px;display:flex;align-items:center;gap:8px"><span class="sq" style="background:var(--brand)"></span>Dogovorjeno ta dan</div><div class="stack">${dayPlans.map(planCard).join("")}</div>`:""}
+    <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px">
+      ${state.me?`<button class="btn wide" data-act="planday" data-d="${ds}">Dobimo se ta dan</button>`:''}
+      ${state.me
+        ? `<button class="btn ghost wide" data-act="daytoggle" data-d="${ds}" style="${iAmBusy?'color:var(--green-ink)':'color:var(--pink)'}">${iAmBusy?"Vendarle lahko pridem":"Ta dan ne morem"}</button>`
+        : '<div class="muted" style="text-align:center">Vpiši ime zgoraj, da označiš razpoložljivost.</div>'}
+    </div>
   </div></div>`;
 }
 function newEventOverlay(){
@@ -551,6 +618,36 @@ function renameOverlay(){
     <div class="row" style="justify-content:space-between"><h3>Tvoje ime</h3><button class="close" data-act="ovclose">✕</button></div>
     <label class="fld" style="margin-top:16px"><span>Ime</span><input id="rn_name" value="${esc(state.me?state.me.name:"")}" /></label>
     <button class="btn wide" data-act="saverename">Shrani</button>
+  </div></div>`;
+}
+function planOverlay(ds){
+  const d=state.data, dt=L.parseYMD(ds);
+  const ideas=L.ideasOf(d.events);
+  const chips = ideas.length? `<div class="hint" style="margin:2px 0 8px">Izberi idejo ali napiši svojo:</div><div class="peep" style="margin-bottom:14px">${ideas.map(i=>`<button class="tag grey" data-act="pickidea" data-title="${esc(i.title)}">${esc(i.title)}</button>`).join("")}</div>`:"";
+  return `<div class="sheet"><div class="grab"></div><div class="pad">
+    <div class="row" style="justify-content:space-between"><h3>Dobimo se</h3><button class="close" data-act="ovclose">✕</button></div>
+    <div class="hint" style="margin:6px 0 14px">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}</div>
+    ${chips}
+    <label class="fld"><span>Kaj bomo počeli? *</span><input id="pl_title" placeholder="npr. Fuzbal v dvorani" /></label>
+    <label class="fld"><span>Kje / opomba</span><input id="pl_loc" placeholder="npr. OŠ telovadnica" /></label>
+    <input type="hidden" id="pl_day" value="${ds}" />
+    <button class="btn wide" data-act="saveplan">Dogovori druženje</button>
+  </div></div>`;
+}
+function scheduleOverlay(title){
+  const d=state.data, thr=d.group.threshold||0, bs=busySet();
+  const start=new Date(); const days=[];
+  for(let i=0;i<45;i++){ days.push(L.ymd(new Date(start.getFullYear(),start.getMonth(),start.getDate()+i))); }
+  const bd=L.bestDates(d.members,bs,days,thr,6).filter(x=>x.free>0);
+  return `<div class="sheet"><div class="grab"></div><div class="pad">
+    <div class="row" style="justify-content:space-between"><h3>Določi termin</h3><button class="close" data-act="ovclose">✕</button></div>
+    <div class="hint" style="margin:8px 0 12px">Za <b>${esc(title)}</b> izberi dan, ko je največ ljudi prostih:</div>
+    <input type="hidden" id="sc_title" value="${esc(title)}" />
+    ${bd.length? bd.map(x=>{ const dt=L.parseYMD(x.day); return `<div class="bd" data-act="planpick" data-d="${x.day}" style="cursor:pointer">
+        <div class="num ${x.green?'g':''}">${x.free}</div>
+        <div style="flex:1"><div style="font-weight:700">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}</div><div class="hint">${x.free} od ${d.members.length} prostih</div></div>
+        <span class="btn sm">Izberi</span>
+      </div>`; }).join("") : '<div class="hint">Najprej naj folk označi razpoložljivost na koledarju.</div>'}
   </div></div>`;
 }
 
@@ -599,6 +696,27 @@ $app.addEventListener("click", async (e)=>{
   }
   if(act==="vote"){ if(!(await ensureMe())) return; await store.toggleVote(t.dataset.id,state.me.name); await reload(); return; }
   if(act==="delev"){ await store.deleteEvent(t.dataset.id); await reload(); toast("Izbrisano"); return; }
+  if(act==="planday"){ if(!(await ensureMe())) return; openOverlay(planOverlay(t.dataset.d)); return; }
+  if(act==="pickidea"){ const el=document.getElementById("pl_title"); if(el){ el.value=t.dataset.title; el.focus(); } return; }
+  if(act==="saveplan"){
+    if(!(await ensureMe())) return;
+    const title=document.getElementById("pl_title").value.trim(); if(!title){ toast("Vpiši, kaj bomo počeli"); return; }
+    const ds=document.getElementById("pl_day").value;
+    const loc=document.getElementById("pl_loc").value.trim()||null;
+    const ev=await store.addEvent({title, location:loc, target_day:ds, proposer:state.me.name});
+    if(ev&&ev.id) await store.toggleVote(ev.id, state.me.name);
+    closeOverlay(); await reload(); toast("Dogovorjeno!"); return;
+  }
+  if(act==="schedule"){ if(!(await ensureMe())) return; openOverlay(scheduleOverlay(t.dataset.title)); return; }
+  if(act==="planpick"){
+    if(!(await ensureMe())) return;
+    const title=document.getElementById("sc_title").value;
+    const ds=t.dataset.d;
+    const ev=await store.addEvent({title, target_day:ds, proposer:state.me.name});
+    if(ev&&ev.id) await store.toggleVote(ev.id, state.me.name);
+    closeOverlay(); await reload(); toast("Termin dogovorjen!");
+    state.view="calendar"; goto(state.code,"calendar"); return;
+  }
 });
 $app.addEventListener("keydown",(e)=>{ if(e.key==="Enter" && e.target.id==="nameInput"){ doJoin(e.target.value); } });
 
