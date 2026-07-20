@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Kdaj se dobimo?</title>
+<style>
+  :root{
+    --bg:#f2f2fb; --card:#ffffff; --ink:#191b26; --muted:#868ca1; --line:#ecedf5;
+    --brand:#6d5efc; --brand2:#9a7cff; --brand-soft:#efecff; --brand-ink:#5546e0;
+    --green:#10b981; --green-soft:#e7f8ef; --green-line:#bfe9d3; --green-ink:#0a7a50;
+    --pink:#fb5a72; --pink-soft:#ffedf0;
+    --r:18px; --r2:14px;
+    --shadow:0 1px 3px rgba(24,26,42,.05), 0 16px 38px rgba(76,60,170,.08);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{color:var(--ink);min-height:100vh;
+    background:
+      radial-gradient(900px 420px at 15% -8%, #e9e6ff 0%, rgba(233,230,255,0) 62%),
+      radial-gradient(900px 460px at 100% 0%, #e2f6ee 0%, rgba(226,246,238,0) 55%),
+      var(--bg);
+    background-attachment:fixed;
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,Arial,sans-serif;
+    -webkit-text-size-adjust:100%}
+  .wrap{max-width:600px;margin:0 auto;padding:18px 16px 72px}
+  h1,h2,h3,h4{margin:0}
+  button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+  input,select,textarea{font:inherit;color:var(--ink);background:#fbfbfe;border:1.5px solid var(--line);
+    border-radius:12px;padding:12px 14px;width:100%;outline:none;transition:border-color .15s}
+  input:focus,select:focus,textarea:focus{border-color:var(--brand);background:#fff}
+  .muted{color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+  .pad{padding:18px}
+  .row{display:flex;align-items:center;gap:10px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border-radius:13px;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-weight:700;
+    box-shadow:0 6px 16px rgba(109,94,252,.28);transition:transform .06s, box-shadow .15s, filter .15s}
+  .btn:active{transform:scale(.98)} .btn:hover{filter:brightness(1.04)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line);box-shadow:none}
+  .btn.wide{width:100%}
+  .fld{display:block;margin-bottom:14px}
+  .fld span{display:block;font-size:13px;color:var(--muted);font-weight:700;margin-bottom:6px}
+
+  /* header */
+  .head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 16px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--green));
+    display:grid;place-items:center;font-size:17px;box-shadow:0 4px 12px rgba(106,92,255,.32)}
+  .brand .ttl{font-weight:800;font-size:16px;line-height:1.1}
+  .brand .sub{font-size:12.5px;color:var(--muted);font-weight:600}
+  .mode{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--muted)}
+  .dotm{width:9px;height:9px;border-radius:50%}
+  .dotm.on{background:var(--green);box-shadow:0 0 0 4px var(--green-soft)}
+  .dotm.off{background:#e0a52e;box-shadow:0 0 0 4px #fdf3e0}
+
+  /* segmented */
+  .seg{display:grid;grid-template-columns:1fr 1fr;background:#e8e9f1;border-radius:14px;padding:4px;gap:4px;margin-bottom:16px}
+  .seg button{padding:11px;border-radius:11px;font-weight:700;color:var(--muted);font-size:14.5px;transition:.15s}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+
+  /* name ask */
+  .ask{background:var(--brand-soft);border:1px solid #e2ddff;border-radius:16px;padding:16px;margin-bottom:16px}
+  .ask h4{font-size:15.5px;margin-bottom:12px}
+
+  /* calendar */
+  .month{display:flex;align-items:center;justify-content:center;gap:14px;margin:2px 0 16px}
+  .month b{font-size:20px;font-weight:800;text-transform:capitalize;min-width:158px;text-align:center}
+  .month button{width:42px;height:42px;border-radius:13px;border:1.5px solid var(--line);background:#fff;font-size:20px;color:var(--ink)}
+  .month button:active{transform:scale(.95)}
+  .instr{text-align:center;color:var(--muted);font-size:13.5px;margin:0 0 14px}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .dow{text-align:center;font-size:11.5px;font-weight:800;color:#b7bbc9;padding-bottom:2px;text-transform:uppercase;letter-spacing:.03em}
+  .cell{position:relative;aspect-ratio:1/1;border-radius:13px;background:#fff;border:1.5px solid var(--line);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:transform .06s, box-shadow .12s}
+  .cell:active{transform:scale(.93)}
+  .cell .d{font-size:15px;font-weight:800;color:var(--ink);line-height:1}
+  .cell .c{font-size:11px;font-weight:800;color:#aeb2c0;line-height:1;padding:2px 6px;border-radius:8px;background:none;border:0}
+  .cell.enough{background:linear-gradient(180deg,#eafaf1,#e1f6ea);border-color:var(--green-line)}
+  .cell.enough .d{color:var(--green-ink)}
+  .cell.enough .c{color:#fff;background:var(--green)}
+  .cell.mine{border-color:var(--pink);box-shadow:inset 0 0 0 2px var(--pink)}
+  .cell.mine::after{content:"";position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--pink)}
+  .cell.today{border-color:var(--brand)}
+  .cell.today .d::after{content:"";display:block;width:4px;height:4px;border-radius:50%;background:var(--brand);margin:2px auto 0}
+  .cell.out{background:transparent;border-color:transparent;cursor:default;pointer-events:none}
+  .cell.out .d{color:#d3d6df;font-weight:600} .cell.out .c{display:none}
+  .cell.past{opacity:.45}
+
+  .best{display:flex;gap:11px;align-items:center;background:linear-gradient(135deg,#e9f9f0,#eaf7f1);border:1px solid var(--green-line);
+    color:var(--green-ink);border-radius:15px;padding:14px 16px;margin-top:16px;font-size:14.5px;box-shadow:0 10px 26px rgba(16,185,129,.10)}
+  .best.empty{background:#f6f7fb;border-color:var(--line);color:var(--muted)}
+  .best .em{font-size:20px}
+  .best b{font-weight:800}
+
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;padding:8px 8px}
+  .foot button{display:inline-flex;align-items:center;gap:7px;color:var(--ink);font-weight:700;font-size:13px;padding:9px 11px;border-radius:11px}
+  .foot button:hover{background:#eef0f6}
+  .stepper{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted);font-weight:700}
+  .stepper button{width:32px;height:32px;border-radius:10px;border:1.5px solid var(--line);font-size:18px;padding:0}
+  .stepper b{min-width:16px;text-align:center;color:var(--ink);font-size:15px}
+
+  .brk{margin-top:14px}
+  .brk summary{cursor:pointer;color:var(--brand-ink);font-weight:700;font-size:13.5px;list-style:none}
+  .brk summary::-webkit-details-marker{display:none}
+  .wk{display:flex;align-items:center;gap:10px;padding:6px 0}
+  .wk .lbl{width:90px;font-size:13px;font-weight:600}
+  .wk .barbg{flex:1;height:9px;background:#eef0f6;border-radius:6px;overflow:hidden}
+  .wk .bar{height:100%;border-radius:6px;background:var(--brand)}
+  .wk .val{width:64px;text-align:right;font-size:12px;color:var(--muted);font-weight:600}
+
+  /* events */
+  .evhead{margin-bottom:14px}
+  .evhead h2{font-size:20px} .evhead p{margin:4px 0 0;font-size:13.5px}
+  .stack>*+*{margin-top:12px}
+  .ev{padding:16px}
+  .ev .t{font-weight:800;font-size:16.5px}
+  .ev .desc{color:var(--muted);margin-top:5px;font-size:14px}
+  .metas{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+  .metas span{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#5c6172;background:#f2f3f9;border-radius:9px;padding:5px 10px;font-weight:600}
+  .voteb .lab{display:inline-flex;align-items:center;gap:3px}
+  .voteb .lab .ic{width:12px;height:12px}
+  .by{font-size:12px;color:var(--muted);margin-top:11px}
+  .voteb{display:inline-flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid var(--line);
+    background:#fff;border-radius:14px;padding:9px 14px;font-weight:800;min-width:60px}
+  .voteb .n{font-size:18px} .voteb .lab{font-size:10px;font-weight:700;color:var(--muted)}
+  .voteb.on{background:linear-gradient(135deg,var(--brand),var(--brand2));border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(109,94,252,.28)} .voteb.on .lab{color:#eae7ff}
+  .empty{text-align:center;color:var(--muted);padding:40px 12px}
+  .empty .em{font-size:34px;display:block;margin-bottom:8px}
+
+  /* sheet / overlay */
+  .overlay{position:fixed;inset:0;background:rgba(20,22,40,.42);display:flex;align-items:flex-end;justify-content:center;z-index:60;backdrop-filter:blur(2px)}
+  @media(min-width:600px){.overlay{align-items:center;padding:20px}}
+  .sheet{background:#fff;width:100%;max-width:520px;border-radius:22px 22px 0 0;max-height:90vh;overflow:auto;box-shadow:0 -10px 50px rgba(0,0,0,.22)}
+  @media(min-width:600px){.sheet{border-radius:22px}}
+  .grab{width:42px;height:5px;border-radius:3px;background:#dcdee7;margin:10px auto 0}
+  .sheet .pad{padding:20px}
+  .sheet h3{font-size:18px}
+  .close{width:36px;height:36px;border-radius:11px;border:1.5px solid var(--line);font-size:18px;color:var(--muted)}
+  .peep{display:flex;flex-wrap:wrap;gap:7px}
+  .tag{border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:700}
+  .tag.free{background:var(--green-soft);color:var(--green-ink)}
+  .tag.busy{background:var(--pink-soft);color:#d23a56}
+  .tag.grey{background:#f1f2f8;color:var(--muted)}
+  .lab{font-weight:800;font-size:13px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:440px){.grid2{grid-template-columns:1fr}}
+
+  /* landing */
+  .hero{text-align:center;padding:22px 6px 4px}
+  .hero h2{font-size:23px;letter-spacing:-.01em}
+  .hero p{color:var(--muted);margin:10px auto 0;max-width:440px;font-size:14.5px}
+  .steps{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:18px 0 4px}
+  .pill{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;box-shadow:var(--shadow)}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1a1c24;color:#fff;padding:12px 18px;
+    border-radius:14px;font-weight:700;z-index:100;box-shadow:0 10px 34px rgba(0,0,0,.28);font-size:14px}
+  /* ikone */
+  .ic{width:1em;height:1em;vertical-align:-.14em;flex:none}
+  .logo .ic{width:19px;height:19px;color:#fff;vertical-align:0}
+  .sq{display:inline-block;width:11px;height:11px;border-radius:4px;vertical-align:-1px}
+  .metas span .ic{margin-right:1px;opacity:.75}
+  .foot button .ic,.voteb .ic{width:15px;height:15px}
+  .best .dot{width:12px;height:12px;border-radius:50%;flex:none}
+</style>
+</head>
+<body>
+<div id="app" class="wrap"></div>
+
+<script>
+/* ============================================================
+   NASTAVITEV SINHRONIZACIJE
+   Pusti prazno = deluje lokalno (na tej napravi).
+   Prilepi svoja podatka iz Supabase = sinhronizacija za vse.
+   ============================================================ */
+const CONFIG = {
+  SUPABASE_URL: "https://mfvwnckadgdgvcqxqtjd.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mdnduY2thZGdkZ3ZjcXhxdGpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NzM3NzMsImV4cCI6MjEwMDE0OTc3M30.7m1d42-FuORj-u_3scpVQnQ4JrGI0fuUra24JL_U8xQ"
+};
+const ONLINE = !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+
+/* ===================== ČISTA LOGIKA (testljiva) ===================== */
+// <PURE-LOGIC>
+const Logic = (function(){
+  const MONTHS = ["januar","februar","marec","april","maj","junij","julij","avgust","september","oktober","november","december"];
+  const DOW_SHORT = ["pon","tor","sre","čet","pet","sob","ned"];
+  const DOW_LONG  = ["ponedeljek","torek","sreda","četrtek","petek","sobota","nedelja"];
+  function pad2(n){ return (n<10?"0":"")+n; }
+  function ymd(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+  function parseYMD(s){ const p=s.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+  function weekdayMon0(d){ return (d.getDay()+6)%7; }
+  function busyKey(memberId, dayStr){ return memberId+"|"+dayStr; }
+  function freeCountForDay(members, busySet, dayStr){
+    let n=0; for(const m of members){ if(!busySet.has(m.id+"|"+dayStr)) n++; } return n;
+  }
+  function isGreen(freeCount, threshold){ return threshold>0 && freeCount>=threshold; }
+  function whoFree(members, busySet, dayStr){ return members.filter(m=>!busySet.has(m.id+"|"+dayStr)); }
+  function whoBusy(members, busySet, dayStr){ return members.filter(m=> busySet.has(m.id+"|"+dayStr)); }
+  function bestWeekday(members, busySet, dayStrs, threshold){
+    const b = Array.from({length:7}, (_,i)=>({weekday:i,sum:0,n:0,meet:0}));
+    for(const ds of dayStrs){
+      const wd = weekdayMon0(parseYMD(ds));
+      const free = freeCountForDay(members, busySet, ds);
+      b[wd].sum+=free; b[wd].n+=1;
+      if(isGreen(free,threshold)) b[wd].meet+=1;
+    }
+    return b.map(x=>({weekday:x.weekday, avg:x.n? x.sum/x.n:0, n:x.n, meet:x.meet}))
+            .sort((a,c)=> c.avg-a.avg || c.meet-a.meet);
+  }
+  function monthMatrix(year, monthIdx){
+    const first = new Date(year, monthIdx, 1);
+    const start = new Date(year, monthIdx, 1 - weekdayMon0(first));
+    const out = [];
+    for(let i=0;i<42;i++){ out.push(new Date(start.getFullYear(), start.getMonth(), start.getDate()+i)); }
+    return out;
+  }
+  function monthDays(year, monthIdx){
+    const n = new Date(year, monthIdx+1, 0).getDate();
+    const out=[]; for(let d=1; d<=n; d++){ out.push(ymd(new Date(year,monthIdx,d))); } return out;
+  }
+  function voteCounts(votes){
+    const m={}; for(const v of votes){ m[v.event_id]=(m[v.event_id]||0)+1; } return m;
+  }
+  function sortEventsByVotes(events, counts){
+    return events.slice().sort((a,b)=>{
+      const d=(counts[b.id]||0)-(counts[a.id]||0);
+      if(d) return d;
+      return (b.created_at||"").localeCompare(a.created_at||"");
+    });
+  }
+  function genCode(rand){
+    const words=["klapa","ekipa","druzba","banda","krog","zmaji","sokoli","medo","kompot","raja"];
+    const w = words[Math.floor(rand()*words.length)];
+    const n = Math.floor(rand()*900+100);
+    return w+"-"+n;
+  }
+  const API = {MONTHS,DOW_SHORT,DOW_LONG,pad2,ymd,parseYMD,weekdayMon0,busyKey,
+    freeCountForDay,isGreen,whoFree,whoBusy,bestWeekday,monthMatrix,monthDays,
+    voteCounts,sortEventsByVotes,genCode};
+  if (typeof module!=="undefined" && module.exports) module.exports = API;
+  return API;
+})();
+// </PURE-LOGIC>
+if (typeof window!=="undefined") window.APP_LOGIC = Logic;
+
+/* ===================== POMOŽNE ===================== */
+const $app = document.getElementById("app");
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function uuid(){ return (crypto.randomUUID? crypto.randomUUID() : "id-"+Math.random().toString(36).slice(2)+Date.now().toString(36)); }
+function nowISO(){ return new Date().toISOString(); }
+function toast(msg){
+  let t=document.createElement("div"); t.className="toast"; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),1800);
+}
+function cap(s){ return s? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+const _svg='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
+const IC={
+  cal:_svg+'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>',
+  users:_svg+'<circle cx="9" cy="8" r="3.2"/><path d="M2.8 19a6.2 6.2 0 0 1 12.4 0"/><path d="M16.5 5.3a3 3 0 0 1 0 5.6M17 13.4a5.5 5.5 0 0 1 4.2 5.6"/></svg>',
+  share:_svg+'<circle cx="6" cy="12" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="17" cy="18" r="2.4"/><path d="M8.2 10.9l6.6-3.8M8.2 13.1l6.6 3.8"/></svg>',
+  check:_svg+'<path d="M5 12l4 4L19 7"/></svg>',
+  pin:_svg+'<path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg>',
+  user:_svg+'<circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>',
+  bag:_svg+'<path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>'
+};
+
+/* ===================== SHRAMBA: lokalno ===================== */
+class LocalStore{
+  constructor(code){ this.code=code; this.key="ksd:"+code; }
+  _read(){
+    try{ const r=localStorage.getItem(this.key); if(r) return JSON.parse(r); }catch(e){}
+    return {group:{id:this.code,name:"",threshold:8},members:[],busy:[],events:[],votes:[]};
+  }
+  _write(db){ localStorage.setItem(this.key, JSON.stringify(db)); }
+  async loadAll(){ return this._read(); }
+  async ensureGroup(name){ const db=this._read(); if(name&&!db.group.name){db.group.name=name; this._write(db);} }
+  async setThreshold(n){ const db=this._read(); db.group.threshold=n; this._write(db); }
+  async addMember(name){ const db=this._read(); const m={id:uuid(),name}; db.members.push(m); this._write(db); return m; }
+  async renameMember(id,name){ const db=this._read(); const m=db.members.find(x=>x.id===id); if(m){m.name=name; this._write(db);} }
+  async toggleBusy(memberId,day){
+    const db=this._read();
+    const i=db.busy.findIndex(b=>b.member_id===memberId&&b.day===day);
+    if(i>=0) db.busy.splice(i,1); else db.busy.push({member_id:memberId,day});
+    this._write(db);
+  }
+  async addEvent(ev){ const db=this._read(); const row={id:uuid(),created_at:nowISO(),...ev}; db.events.push(row); this._write(db); return row; }
+  async deleteEvent(id){ const db=this._read(); db.events=db.events.filter(e=>e.id!==id); db.votes=db.votes.filter(v=>v.event_id!==id); this._write(db); }
+  async toggleVote(eventId,voter){
+    const db=this._read();
+    const i=db.votes.findIndex(v=>v.event_id===eventId&&v.voter===voter);
+    if(i>=0) db.votes.splice(i,1); else db.votes.push({event_id:eventId,voter});
+    this._write(db);
+  }
+  subscribe(cb){ const h=(e)=>{ if(e.key===this.key) cb(); }; window.addEventListener("storage",h); return ()=>window.removeEventListener("storage",h); }
+}
+
+/* ===================== SHRAMBA: Supabase ===================== */
+class CloudStore{
+  constructor(code){ this.code=code; this.sb=window.__sb; }
+  async loadAll(){
+    const code=this.code, sb=this.sb;
+    const [g,m,b,e,v] = await Promise.all([
+      sb.from("groups").select("*").eq("id",code).maybeSingle(),
+      sb.from("members").select("*").eq("group_id",code).order("created_at"),
+      sb.from("busy_days").select("member_id,day").eq("group_id",code),
+      sb.from("events").select("*").eq("group_id",code),
+      sb.from("event_votes").select("event_id,voter").eq("group_id",code)
+    ]);
+    for(const r of [g,m,b,e,v]) if(r.error) throw r.error;
+    return { group: g.data || {id:code,name:"",threshold:8},
+      members: m.data||[], busy:b.data||[], events:e.data||[], votes:v.data||[] };
+  }
+  async ensureGroup(name){ const {error}=await this.sb.from("groups").upsert({id:this.code, name:name||null},{onConflict:"id",ignoreDuplicates:true}); if(error&&error.code!=="23505") throw error; }
+  async setThreshold(n){ const {error}=await this.sb.from("groups").update({threshold:n}).eq("id",this.code); if(error) throw error; }
+  async addMember(name){ const {data,error}=await this.sb.from("members").insert({group_id:this.code,name}).select().single(); if(error) throw error; return data; }
+  async renameMember(id,name){ const {error}=await this.sb.from("members").update({name}).eq("id",id); if(error) throw error; }
+  async toggleBusy(memberId,day){
+    const {data}=await this.sb.from("busy_days").select("id").eq("member_id",memberId).eq("day",day).maybeSingle();
+    if(data) await this.sb.from("busy_days").delete().eq("id",data.id);
+    else await this.sb.from("busy_days").insert({group_id:this.code,member_id:memberId,day});
+  }
+  async addEvent(ev){ const {data,error}=await this.sb.from("events").insert({group_id:this.code,...ev}).select().single(); if(error) throw error; return data; }
+  async deleteEvent(id){ await this.sb.from("events").delete().eq("id",id); }
+  async toggleVote(eventId,voter){
+    const {data}=await this.sb.from("event_votes").select("id").eq("event_id",eventId).eq("voter",voter).maybeSingle();
+    if(data) await this.sb.from("event_votes").delete().eq("id",data.id);
+    else await this.sb.from("event_votes").insert({group_id:this.code,event_id:eventId,voter});
+  }
+  subscribe(cb){
+    const ch=this.sb.channel("room-"+this.code);
+    ["groups","members","busy_days","events","event_votes"].forEach(t=>{ ch.on("postgres_changes",{event:"*",schema:"public",table:t},cb); });
+    ch.subscribe();
+    return ()=>this.sb.removeChannel(ch);
+  }
+}
+
+/* ===================== STANJE ===================== */
+const L = Logic;
+let store=null, unsub=null, reloadTimer=null;
+const state = {
+  code:null, view:"calendar", me:null,
+  ym:{y:new Date().getFullYear(), m:new Date().getMonth()},
+  data:{group:{threshold:8,name:""},members:[],busy:[],events:[],votes:[]},
+  error:null, loading:true, overlay:null, showBrk:false
+};
+
+function getMe(code){ try{return JSON.parse(localStorage.getItem("ksd-me:"+code));}catch(e){return null;} }
+function setMe(code,me){ localStorage.setItem("ksd-me:"+code, JSON.stringify(me)); }
+function rememberRoom(code,name){
+  let list=[]; try{list=JSON.parse(localStorage.getItem("ksd-rooms"))||[];}catch(e){}
+  list=list.filter(r=>r.code!==code); list.unshift({code,name:name||code}); list=list.slice(0,8);
+  localStorage.setItem("ksd-rooms",JSON.stringify(list));
+}
+function getRooms(){ try{return JSON.parse(localStorage.getItem("ksd-rooms"))||[];}catch(e){return [];} }
+
+/* ===================== USMERJEVALNIK ===================== */
+function parseRoute(){
+  const h=location.hash.replace(/^#\/?/,"");
+  const parts=h.split("/").filter(Boolean);
+  if(parts[0]==="r" && parts[1]) return {code:decodeURIComponent(parts[1]), view: parts[2]==="dogodki"?"events":"calendar"};
+  return {code:null};
+}
+function goto(code,view){ location.hash = "#/r/"+encodeURIComponent(code)+(view==="events"?"/dogodki":""); }
+
+/* ===================== NALAGANJE ===================== */
+function scheduleReload(){ clearTimeout(reloadTimer); reloadTimer=setTimeout(reload,150); }
+async function reload(){
+  try{ state.data = await store.loadAll(); state.error=null; }
+  catch(e){ state.error=(e&&e.message)||String(e); }
+  state.loading=false; render();
+}
+function busySet(){ const s=new Set(); for(const b of state.data.busy) s.add(b.member_id+"|"+b.day); return s; }
+
+/* ===================== IZRIS ===================== */
+function render(){
+  if(!state.code){ renderLanding(); return; }
+  const d=state.data;
+  let html = `
+  <div class="head">
+    <div class="brand">
+      <div class="logo">${IC.cal}</div>
+      <div><div class="ttl">Kdaj se dobimo?</div><div class="sub">${esc(d.group.name||state.code)}</div></div>
+    </div>
+    <div class="mode" title="${ONLINE?'Vsi vidijo iste podatke':'Podatki so samo na tej napravi'}">
+      <span class="dotm ${ONLINE?'on':'off'}"></span>${ONLINE?'v živo':'lokalno'}
+    </div>
+  </div>
+  <div class="seg">
+    <button class="${state.view==="calendar"?"on":""}" data-act="tab" data-v="calendar">Koledar</button>
+    <button class="${state.view==="events"?"on":""}" data-act="tab" data-v="events">Dogodki</button>
+  </div>`;
+
+  if(state.error){
+    html += `<div class="ask" style="background:var(--pink-soft);border-color:#f6c9d1">Napaka pri povezavi: ${esc(state.error)}</div>`;
+  }
+  if(!state.me){
+    html += `<div class="ask">
+      <h4>Kako ti je ime?</h4>
+      <div class="row"><input id="nameInput" placeholder="npr. Blaž" /><button class="btn" data-act="join">Naprej</button></div>
+    </div>`;
+  }
+
+  html += (state.view==="calendar") ? renderCalendar() : renderEvents();
+  $app.innerHTML = html;
+  if(state.overlay) $app.insertAdjacentHTML("beforeend", state.overlay);
+  const ni=document.getElementById("nameInput"); if(ni) ni.focus();
+}
+
+function renderCalendar(){
+  const d=state.data, thr=d.group.threshold||0, members=d.members, bs=busySet();
+  const {y,m}=state.ym;
+  const cells=L.monthMatrix(y,m), todayStr=L.ymd(new Date());
+  const dow=L.DOW_SHORT.map(x=>`<div class="dow">${x}</div>`).join("");
+  let grid="";
+  for(const dt of cells){
+    const ds=L.ymd(dt), out=dt.getMonth()!==m, past=ds<todayStr;
+    const free=L.freeCountForDay(members,bs,ds), green=L.isGreen(free,thr);
+    const iAmBusy = state.me && bs.has(state.me.id+"|"+ds);
+    const cls=["cell"]; if(out)cls.push("out"); if(!out&&green)cls.push("enough"); if(!out&&iAmBusy)cls.push("mine"); if(ds===todayStr)cls.push("today"); if(!out&&past)cls.push("past");
+    grid += `<div class="${cls.join(" ")}" ${out?"":`data-act="day" data-d="${ds}"`}>
+      <span class="d">${dt.getDate()}</span>
+      ${out?"":`<button class="c" data-act="dayinfo" data-d="${ds}">${free}</button>`}
+    </div>`;
+  }
+
+  let days=L.monthDays(y,m);
+  const isCurrent=(y===new Date().getFullYear() && m===new Date().getMonth());
+  if(isCurrent) days=days.filter(ds=>ds>=todayStr);
+  const rank=L.bestWeekday(members,bs,days,thr), top=rank[0];
+  const maxAvg=Math.max(1,...rank.map(r=>r.avg));
+  const wkRows=rank.map(r=>`<div class="wk">
+      <div class="lbl" style="${r===top?'color:var(--green-ink);font-weight:800':''}">${L.DOW_LONG[r.weekday]}</div>
+      <div class="barbg"><div class="bar" style="width:${Math.round(r.avg/maxAvg*100)}%;${r===top?'background:var(--green)':''}"></div></div>
+      <div class="val">${r.avg.toFixed(1)}${r.meet?` · ${r.meet}✓`:""}</div>
+    </div>`).join("");
+  const hasData=members.length>0;
+  const bestBar = (top&&top.n&&hasData)
+    ? `<div class="best"><span class="dot" style="background:var(--green)"></span><div>Največ vas je prostih ob <b>${L.DOW_LONG[top.weekday]}</b> — v povprečju <b>${top.avg.toFixed(1)}</b> ljudi${top.meet?`, ${top.meet}× dovolj za druženje`:""}.</div></div>`
+    : `<div class="best empty"><span class="dot" style="background:#c7cbd8"></span><div>Ko folk označi razpoložljivost, se tu pokaže najboljši reden dan.</div></div>`;
+
+  return `
+  <div class="card pad">
+    <div class="month">
+      <button data-act="prev">‹</button><b>${L.MONTHS[m]} ${y}</b><button data-act="next">›</button>
+    </div>
+    <div class="instr">Tapni dneve, ko <b>ne moreš</b>. <span class="sq" style="background:var(--green)"></span> = vas je dovolj · tapni številko za kdo je prost.</div>
+    <div class="grid" style="margin-bottom:7px">${dow}</div>
+    <div class="grid">${grid}</div>
+  </div>
+
+  ${bestBar}
+
+  <div class="card foot">
+    <button data-act="members">${IC.users}${members.length} v skupini</button>
+    <div class="stepper">Dovolj <button data-act="thrminus">−</button><b>${thr}</b><button data-act="thrplus">+</button></div>
+    <button data-act="copy">${IC.share}Deli</button>
+  </div>
+
+  <details class="brk card pad" ${state.showBrk?"open":""}>
+    <summary data-act="brk">Poglej po dnevih v tednu ▾</summary>
+    <div style="margin-top:10px">${wkRows}</div>
+  </details>`;
+}
+
+function renderEvents(){
+  const d=state.data, counts=L.voteCounts(d.votes);
+  const events=L.sortEventsByVotes(d.events,counts);
+  const list = events.length? events.map(ev=>{
+    const c=counts[ev.id]||0;
+    const voters=d.votes.filter(v=>v.event_id===ev.id).map(v=>v.voter);
+    const mine=state.me && voters.includes(state.me.name);
+    const metas=[];
+    if(ev.location) metas.push(`${IC.pin}${esc(ev.location)}`);
+    if(ev.min_people) metas.push(`${IC.user}min. ${esc(ev.min_people)}`);
+    if(ev.equipment) metas.push(`${IC.bag}${esc(ev.equipment)}`);
+    if(ev.needs_money) metas.push(`<b style="font-weight:800">€</b> ${esc(ev.budget||"denar")}`);
+    if(ev.target_day) metas.push(`${IC.cal}${esc(ev.target_day)}`);
+    return `<div class="card ev">
+      <div class="row" style="align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="flex:1">
+          <div class="t">${esc(ev.title)}</div>
+          ${ev.description?`<div class="desc">${esc(ev.description)}</div>`:""}
+          ${metas.length?`<div class="metas">${metas.map(x=>`<span>${x}</span>`).join("")}</div>`:""}
+          <div class="by">Predlagal: ${esc(ev.proposer||"?")}${voters.length?` · glasovali: ${esc(voters.join(", "))}`:""}</div>
+        </div>
+        <div style="text-align:center">
+          <button class="voteb ${mine?"on":""}" data-act="vote" data-id="${ev.id}"><span class="n">${c}</span><span class="lab">${IC.check}grem</span></button>
+          ${state.me&&ev.proposer===state.me.name?`<div style="margin-top:8px"><button class="muted" style="font-size:12px;font-weight:700" data-act="delev" data-id="${ev.id}">izbriši</button></div>`:""}
+        </div>
+      </div>
+    </div>`;
+  }).join(""):`<div class="empty"><span class="em">${IC.cal}</span>Še ni predlogov.<br>Dodaj prvega!</div>`;
+
+  return `
+  <div class="evhead row" style="justify-content:space-between;gap:10px">
+    <div><h2>Kaj bomo počeli?</h2><p class="muted">Vsak predlaga, folk glasuje. Največ glasov zmaga.</p></div>
+    <button class="btn" data-act="newev">＋ Nov</button>
+  </div>
+  <div class="stack">${list}</div>`;
+}
+
+/* ===================== MODALI ===================== */
+function openOverlay(html){ state.overlay=`<div class="overlay" data-act="ovbg">${html}</div>`; render(); }
+function closeOverlay(){ state.overlay=null; render(); }
+
+function dayInfoOverlay(ds){
+  const d=state.data, bs=busySet();
+  const free=L.whoFree(d.members,bs,ds), busy=L.whoBusy(d.members,bs,ds);
+  const dt=L.parseYMD(ds), iAmBusy=state.me && bs.has(state.me.id+"|"+ds);
+  const title=`${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}`;
+  return `<div class="sheet"><div class="grab"></div><div class="pad">
+    <div class="row" style="justify-content:space-between"><h3>${title}</h3><button class="close" data-act="ovclose">✕</button></div>
+    <div class="lab" style="margin:18px 0 8px;color:var(--green-ink);display:flex;align-items:center;gap:8px"><span class="sq" style="background:var(--green)"></span>Lahko pridejo (${free.length})</div>
+    <div class="peep">${free.length?free.map(m=>`<span class="tag free">${esc(m.name)}</span>`).join(""):'<span class="tag grey">nihče</span>'}</div>
+    <div class="lab" style="margin:18px 0 8px;color:#d23a56;display:flex;align-items:center;gap:8px"><span class="sq" style="background:var(--pink)"></span>Ne morejo (${busy.length})</div>
+    <div class="peep">${busy.length?busy.map(m=>`<span class="tag busy">${esc(m.name)}</span>`).join(""):'<span class="tag grey">nihče</span>'}</div>
+    <div style="margin-top:20px">${state.me
+      ? `<button class="btn wide" data-act="daytoggle" data-d="${ds}" ${iAmBusy?'':'style="background:var(--pink)"'}>${iAmBusy?"Vendarle lahko pridem":"Ta dan ne morem"}</button>`
+      : '<div class="muted" style="text-align:center">Vpiši ime zgoraj, da označiš razpoložljivost.</div>'}</div>
+  </div></div>`;
+}
+function newEventOverlay(){
+  return `<div class="sheet"><div class="grab"></div><div class="pad">
+    <div class="row" style="justify-content:space-between"><h3>Nov dogodek</h3><button class="close" data-act="ovclose">✕</button></div>
+    <div style="margin-top:16px">
+      <label class="fld"><span>Naslov *</span><input id="ev_title" placeholder="npr. Fuzbal v dvorani" /></label>
+      <label class="fld"><span>Opis</span><textarea id="ev_desc" rows="2" placeholder="Kaj se dogaja?"></textarea></label>
+      <div class="grid2">
+        <label class="fld"><span>Lokacija</span><input id="ev_loc" placeholder="npr. telovadnica" /></label>
+        <label class="fld"><span>Min. ljudi</span><input id="ev_min" type="number" min="1" placeholder="10" /></label>
+      </div>
+      <label class="fld"><span>Kaj rabimo</span><input id="ev_equip" placeholder="npr. žoga, projektor" /></label>
+      <div class="grid2">
+        <label class="fld"><span>Rabimo denar?</span><select id="ev_money"><option value="">Ne</option><option value="yes">Da</option></select></label>
+        <label class="fld"><span>Koliko / za kaj</span><input id="ev_budget" placeholder="npr. 3 €" /></label>
+      </div>
+      <button class="btn wide" data-act="saveev">Shrani dogodek</button>
+    </div>
+  </div></div>`;
+}
+function membersOverlay(){
+  const d=state.data;
+  const chips=d.members.length? d.members.map(m=>`<span class="tag ${state.me&&m.id===state.me.id?'free':'grey'}">${esc(m.name)}${state.me&&m.id===state.me.id?' (ti)':''}</span>`).join(""):'<span class="muted">Še nihče ni vpisan.</span>';
+  return `<div class="sheet"><div class="grab"></div><div class="pad">
+    <div class="row" style="justify-content:space-between"><h3>V skupini (${d.members.length})</h3><button class="close" data-act="ovclose">✕</button></div>
+    <div class="peep" style="margin:16px 0">${chips}</div>
+    ${state.me?`<button class="btn ghost wide" data-act="rename">Preimenuj me</button>`:''}
+  </div></div>`;
+}
+function renameOverlay(){
+  return `<div class="sheet"><div class="grab"></div><div class="pad">
+    <div class="row" style="justify-content:space-between"><h3>Tvoje ime</h3><button class="close" data-act="ovclose">✕</button></div>
+    <label class="fld" style="margin-top:16px"><span>Ime</span><input id="rn_name" value="${esc(state.me?state.me.name:"")}" /></label>
+    <button class="btn wide" data-act="saverename">Shrani</button>
+  </div></div>`;
+}
+
+/* ===================== DEJANJA ===================== */
+async function ensureMe(){ if(state.me) return true; toast("Najprej vpiši ime"); const ni=document.getElementById("nameInput"); if(ni) ni.focus(); return false; }
+async function doJoin(name){
+  name=(name||"").trim(); if(!name){ toast("Vpiši ime"); return; }
+  await store.ensureGroup(state.data.group.name||state.code);
+  const m=await store.addMember(name);
+  state.me={id:m.id,name:m.name}; setMe(state.code,state.me);
+  await reload(); toast("Živjo, "+name+"!");
+}
+async function setThr(n){ n=Math.max(1,n); await store.setThreshold(n); await reload(); }
+
+$app.addEventListener("click", async (e)=>{
+  const t=e.target.closest("[data-act]"); if(!t) return;
+  const act=t.dataset.act;
+  if(act==="ovbg"){ if(e.target===t) closeOverlay(); return; }
+  if(act==="ovclose"){ closeOverlay(); return; }
+  if(act==="tab"){ state.view=t.dataset.v; state.overlay=null; goto(state.code,state.view); return; }
+  if(act==="copy"){ try{await navigator.clipboard.writeText(location.href); toast("Povezava kopirana");}catch(_){ toast(location.href);} return; }
+  if(act==="prev"){ let {y,m}=state.ym; m--; if(m<0){m=11;y--;} state.ym={y,m}; render(); return; }
+  if(act==="next"){ let {y,m}=state.ym; m++; if(m>11){m=0;y++;} state.ym={y,m}; render(); return; }
+  if(act==="brk"){ state.showBrk=!state.showBrk; return; }
+  if(act==="join"){ await doJoin(document.getElementById("nameInput").value); return; }
+  if(act==="members"){ openOverlay(membersOverlay()); return; }
+  if(act==="rename"){ openOverlay(renameOverlay()); return; }
+  if(act==="saverename"){ const nn=document.getElementById("rn_name").value.trim(); if(!nn) return; await store.renameMember(state.me.id,nn); state.me.name=nn; setMe(state.code,state.me); closeOverlay(); await reload(); toast("Shranjeno"); return; }
+  if(act==="thrplus"){ await setThr((state.data.group.threshold||0)+1); return; }
+  if(act==="thrminus"){ await setThr((state.data.group.threshold||0)-1); return; }
+  if(act==="day"){ if(!(await ensureMe())) return; await store.toggleBusy(state.me.id,t.dataset.d); await reload(); return; }
+  if(act==="dayinfo"){ openOverlay(dayInfoOverlay(t.dataset.d)); return; }
+  if(act==="daytoggle"){ if(!(await ensureMe())) return; await store.toggleBusy(state.me.id,t.dataset.d); await reload(); state.overlay=dayInfoOverlay(t.dataset.d); render(); return; }
+  if(act==="newev"){ if(!(await ensureMe())) return; openOverlay(newEventOverlay()); return; }
+  if(act==="saveev"){
+    const title=document.getElementById("ev_title").value.trim(); if(!title){ toast("Vpiši naslov"); return; }
+    const ev={ title,
+      description:document.getElementById("ev_desc").value.trim()||null,
+      location:document.getElementById("ev_loc").value.trim()||null,
+      min_people:parseInt(document.getElementById("ev_min").value)||null,
+      equipment:document.getElementById("ev_equip").value.trim()||null,
+      needs_money:document.getElementById("ev_money").value==="yes",
+      budget:document.getElementById("ev_budget").value.trim()||null,
+      proposer:state.me.name };
+    await store.addEvent(ev); closeOverlay(); await reload(); toast("Dogodek dodan"); return;
+  }
+  if(act==="vote"){ if(!(await ensureMe())) return; await store.toggleVote(t.dataset.id,state.me.name); await reload(); return; }
+  if(act==="delev"){ await store.deleteEvent(t.dataset.id); await reload(); toast("Izbrisano"); return; }
+});
+$app.addEventListener("keydown",(e)=>{ if(e.key==="Enter" && e.target.id==="nameInput"){ doJoin(e.target.value); } });
+
+/* ===================== LANDING ===================== */
+function renderLanding(){
+  const rooms=getRooms();
+  const roomsHtml = rooms.length? `<div class="card pad" style="margin-top:16px">
+      <h4 style="margin-bottom:12px">Nazadnje obiskano</h4>
+      <div class="stack">${rooms.map(r=>`<button class="btn ghost wide" data-land="open" data-code="${esc(r.code)}" style="justify-content:space-between">${esc(r.name)}<span class="muted" style="font-weight:600">${esc(r.code)}</span></button>`).join("")}</div>
+    </div>`:"";
+  $app.innerHTML = `
+    <div class="head">
+      <div class="brand"><div class="logo">${IC.cal}</div><div class="ttl">Kdaj se dobimo?</div></div>
+      <div class="mode"><span class="dotm ${ONLINE?'on':'off'}"></span>${ONLINE?'v živo':'lokalno'}</div>
+    </div>
+    <div class="hero">
+      <h2>Poišči dan, ko ima največ ljudi čas</h2>
+      <p>Vsak označi, kdaj <b>ne more</b>. Koledar sproti pokaže, koliko vas je prostih, in obarva dneve, ko vas je dovolj. Skupaj izberete tudi, kaj boste počeli.</p>
+      <div class="steps"><span class="pill">1 · Ustvari skupino</span><span class="pill">2 · Deli povezavo</span><span class="pill">3 · Vsak označi</span></div>
+    </div>
+    <div class="card pad" style="margin-top:8px">
+      <h4>Ustvari novo skupino</h4>
+      <label class="fld" style="margin-top:12px"><span>Ime skupine</span><input id="l_name" placeholder="npr. Nogometna raja" /></label>
+      <button class="btn wide" data-land="create">Ustvari in dobi povezavo →</button>
+    </div>
+    <div class="card pad" style="margin-top:14px">
+      <h4>Pridruži se obstoječi</h4>
+      <div class="row" style="margin-top:12px"><input id="l_code" placeholder="koda, npr. klapa-482" /><button class="btn ghost" data-land="join" style="white-space:nowrap">Vstopi</button></div>
+    </div>
+    ${roomsHtml}
+    ${!ONLINE?`<p class="muted" style="text-align:center;font-size:12.5px;margin-top:18px">Lokalni način: podatki ostanejo na tej napravi. Za skupno rabo vklopi sinhronizacijo (glej NAVODILA).</p>`:""}
+  `;
+  $app.onclick = async (e)=>{
+    const b=e.target.closest("[data-land]"); if(!b) return;
+    if(b.dataset.land==="create"){
+      const name=(document.getElementById("l_name").value||"").trim();
+      const code=L.genCode(Math.random); rememberRoom(code,name||code);
+      const s=ONLINE? new CloudStore(code): new LocalStore(code);
+      try{ await s.ensureGroup(name||code); }catch(_){}
+      goto(code,"calendar");
+    }
+    if(b.dataset.land==="join"){ const code=(document.getElementById("l_code").value||"").trim().toLowerCase(); if(!code){ toast("Vpiši kodo"); return; } goto(code,"calendar"); }
+    if(b.dataset.land==="open"){ goto(b.dataset.code,"calendar"); }
+  };
+}
+
+/* ===================== ZAGON ===================== */
+async function loadSupabase(){
+  if(!ONLINE) return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement("script");
+    s.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
+    s.onload=res; s.onerror=()=>rej(new Error("Ni bilo mogoče naložiti Supabase knjižnice"));
+    document.head.appendChild(s);
+  });
+  window.__sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+}
+async function boot(){
+  const r=parseRoute();
+  if(unsub){ unsub(); unsub=null; }
+  if(!r.code){ renderLanding(); return; }
+  $app.onclick=null;
+  state.code=r.code; state.view=r.view; state.me=getMe(r.code); state.overlay=null; state.loading=true; state.error=null;
+  try{ if(ONLINE && !window.__sb) await loadSupabase(); }catch(e){ state.error=e.message; }
+  store = ONLINE ? new CloudStore(r.code) : new LocalStore(r.code);
+  render(); await reload();
+  rememberRoom(r.code, state.data.group.name||r.code);
+  unsub = store.subscribe(scheduleReload);
+}
+window.addEventListener("hashchange", boot);
+boot();
+</script>
+</body>
+</html>
