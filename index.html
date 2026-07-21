@@ -226,10 +226,11 @@ function busySet(){ const s=new Set(); for(const b of state.data.busy) s.add(b.m
 const APP_URL="https://poni-9.github.io/kdaj-se-dobimo/";
 function isWebHosted(){ return location.protocol==="http:"||location.protocol==="https:"; }
 function shareURL(){ const base=isWebHosted()?(location.origin+location.pathname):APP_URL; return base+"#/r/"+encodeURIComponent(state.code); }
+function overviewURL(){ const base=isWebHosted()?(location.origin+location.pathname):APP_URL; return base+"#/r/"+encodeURIComponent(state.code)+"/pregled"; }
 
 /* ===== USMERJEVALNIK ===== */
-function parseRoute(){ const h=location.hash.replace(/^#\/?/,""); const p=h.split("/").filter(Boolean); if(p[0]==="r"&&p[1]) return {code:decodeURIComponent(p[1]), view:p[2]==="rezultati"?"results":"participant"}; return {code:null}; }
-function goto(code,view){ location.hash="#/r/"+encodeURIComponent(code)+(view==="results"?"/rezultati":""); }
+function parseRoute(){ const h=location.hash.replace(/^#\/?/,""); const p=h.split("/").filter(Boolean); if(p[0]==="r"&&p[1]){ var v=p[2]==="rezultati"?"results":(p[2]==="pregled"?"overview":"participant"); return {code:decodeURIComponent(p[1]), view:v}; } return {code:null}; }
+function goto(code,view){ var suf=view==="results"?"/rezultati":(view==="overview"?"/pregled":""); location.hash="#/r/"+encodeURIComponent(code)+suf; }
 
 /* ===== NALAGANJE ===== */
 function scheduleReload(){ clearTimeout(reloadTimer); reloadTimer=setTimeout(reload,150); }
@@ -247,7 +248,7 @@ function dowRow(){ return `<div class="grid" style="margin-bottom:7px">${L.DOW_S
 
 function render(){
   if(!state.code){ renderLanding(); return; }
-  if(state.view==="results") renderResults(); else renderParticipant();
+  if(state.view==="results") renderResults(); else if(state.view==="overview") renderOverview(); else renderParticipant();
   if(state.overlay) $app.insertAdjacentHTML("beforeend",state.overlay);
   const ni=document.getElementById("nameInput"); if(ni) ni.focus();
 }
@@ -295,6 +296,43 @@ function renderParticipant(){
   $app.innerHTML=html;
 }
 
+/* ---- POGLED: pregled (samo za ogled, deljivo) ---- */
+function renderOverview(){
+  const d=state.data, thr=d.group.threshold||0, members=d.members, bs=busySet();
+  const {y,m}=state.ym, cells=L.monthMatrix(y,m), todayStr=L.ymd(new Date());
+  let grid="";
+  for(const dt of cells){
+    const ds=L.ymd(dt), out=dt.getMonth()!==m, past=ds<todayStr;
+    const free=L.freeCountForDay(members,bs,ds), green=L.isGreen(free,thr);
+    const cls=["cell"]; if(out)cls.push("out"); if(!out&&green)cls.push("enough"); if(ds===todayStr)cls.push("today"); if(!out&&past)cls.push("past");
+    grid+=`<div class="${cls.join(" ")}" ${out?"":`data-act="rday" data-d="${ds}"`}><span class="d">${dt.getDate()}</span>${out?"":`<span class="c">${free}</span>`}</div>`;
+  }
+  let days=L.monthDays(y,m); const now=new Date();
+  if(y===now.getFullYear()&&m===now.getMonth()) days=days.filter(ds=>ds>=todayStr);
+  const bd=L.bestDates(members,bs,days,thr,5).filter(x=>x.free>0);
+  let html=header((d.group.name||state.code)+" · pregled");
+  html+=`<div class="banner share"><div style="font-weight:800">Kdaj ima ekipa čas?</div><div class="hint" style="margin-top:2px">Zelen dan = prostih je vsaj ${thr}. Tapni dan, da vidiš kdo. Samo za ogled.</div></div>`;
+  html+=`<div class="card pad">
+    ${monthNav()}
+    <div class="instr">Številka = koliko ljudi je takrat prostih. <span class="sq" style="background:var(--green)"></span> = vsaj ${thr}.</div>
+    ${dowRow()}
+    <div class="grid">${grid}</div>
+  </div>`;
+  html+= (members.length&&bd.length)?`<div class="card pad" style="margin-top:14px">
+    <div class="sectitle"><span style="color:#e8a91d;display:inline-flex">${IC.star}</span>Najboljši dnevi</div>
+    ${bd.map(x=>{ const dt=L.parseYMD(x.day); return `<div class="bd" data-act="rday" data-d="${x.day}" style="cursor:pointer">
+      <div class="num ${x.green?'g':''}">${x.free}</div>
+      <div style="flex:1"><div style="font-weight:700">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}</div><div class="hint">${x.free} od ${members.length} prostih</div></div>
+    </div>`; }).join("")}
+  </div>`:`<div class="card pad" style="margin-top:14px"><div class="hint" style="text-align:center">Ekipa še ni označila razpoložljivosti.</div></div>`;
+  html+=`<div class="card foot">
+    <button data-act="members">${IC.users}${members.length} odgovorilo</button>
+    <button data-act="copyov">${IC.share}Deli povezavo</button>
+  </div>
+  <div class="hint" style="text-align:center;margin-top:16px">Samo za ogled. Urejanje ima organizator na svoji strani.</div>`;
+  $app.innerHTML=html;
+}
+
 /* ---- POGLED: rezultati (organizator, zasebno) ---- */
 function renderResults(){
   const d=state.data, thr=d.group.threshold||0, members=d.members, bs=busySet();
@@ -314,10 +352,15 @@ function renderResults(){
 
   let html=header((d.group.name||state.code)+" · rezultati");
   html+=`<div class="banner share">
-    <div style="font-weight:800">Pošlji to povezavo ekipi</div>
-    <div class="hint" style="margin-top:2px">Vsak vpiše ime in označi, kdaj ne more. Te (rezultatov) strani ne deli — obdrži jo zase.</div>
-    ${!isWebHosted()?`<div class="hint" style="margin-top:8px;color:#b06a00;font-weight:600">Odprl/-a si datoteko s svojega računalnika. Za urejanje raje odpri <b>poni-9.github.io/kdaj-se-dobimo</b>. Spodnja povezava je že prava za deljenje.</div>`:""}
+    <div style="font-weight:800">1 · Povabi ekipo</div>
+    <div class="hint" style="margin-top:2px">Pošlji to povezavo, da vsak označi, kdaj <b>ne more</b>.</div>
+    ${!isWebHosted()?`<div class="hint" style="margin-top:8px;color:#b06a00;font-weight:600">Odprl/-a si datoteko s svojega računalnika. Za deljenje raje odpri <b>poni-9.github.io/kdaj-se-dobimo</b>. Spodnja povezava je že prava.</div>`:""}
     <div class="linkbox"><input id="shareLink" readonly value="${esc(shareURL())}"><button class="btn" data-act="copyshare" style="white-space:nowrap">Kopiraj</button></div>
+  </div>`;
+  html+=`<div class="banner" style="background:var(--brand-soft);border:1px solid #e2ddff">
+    <div style="font-weight:800">2 · Deli rezultate</div>
+    <div class="hint" style="margin-top:2px">Povezava samo za ogled — kdaj ima kdo čas in kateri je najboljši dan.</div>
+    <div class="linkbox"><input id="ovLink" readonly value="${esc(overviewURL())}"><button class="btn" data-act="copyov" style="white-space:nowrap">Kopiraj</button></div>
   </div>`;
   html+=`<div class="card pad">
     ${monthNav()}
@@ -335,7 +378,7 @@ function renderResults(){
   html+=`<div class="card foot">
     <button data-act="members">${IC.users}${members.length} odgovorilo</button>
     <div class="stepper">Vsaj <button data-act="thrminus">−</button><b>${thr}</b><button data-act="thrplus">+</button></div>
-    <button data-act="copyshare">${IC.share}Deli</button>
+    <button data-act="copyov">${IC.share}Deli pregled</button>
   </div>
   <details class="brk card pad" ${state.showBrk?"open":""} style="margin-top:12px">
     <summary data-act="brk">Po dnevih v tednu ▾</summary><div style="margin-top:10px">${wkRows}</div>
@@ -373,6 +416,7 @@ async function ensureMe(){ if(state.me) return true; toast("Najprej vpiši ime")
 async function doJoin(name){ name=(name||"").trim(); if(!name){ toast("Vpiši ime"); return; } await store.ensureGroup(state.data.group.name||state.code); const m=await store.addMember(name); state.me={id:m.id,name:m.name}; setMe(state.code,state.me); await reload(); toast("Živjo, "+name+"!"); }
 async function setThr(n){ n=Math.max(1,n); await store.setThreshold(n); await reload(); }
 async function copyShare(){ try{ await navigator.clipboard.writeText(shareURL()); toast("Povezava kopirana"); }catch(_){ const el=document.getElementById("shareLink"); if(el){el.select();} toast(shareURL()); } }
+async function copyOverview(){ try{ await navigator.clipboard.writeText(overviewURL()); toast("Povezava kopirana"); }catch(_){ const el=document.getElementById("ovLink"); if(el){el.select();} toast(overviewURL()); } }
 
 $app.addEventListener("click", async (e)=>{
   const t=e.target.closest("[data-act]"); if(!t) return; const act=t.dataset.act;
@@ -392,6 +436,7 @@ $app.addEventListener("click", async (e)=>{
   if(act==="thrminus"){ await setThr((state.data.group.threshold||0)-1); return; }
   if(act==="brk"){ state.showBrk=!state.showBrk; return; }
   if(act==="copyshare"){ await copyShare(); return; }
+  if(act==="copyov"){ await copyOverview(); return; }
 });
 $app.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.id==="nameInput") doJoin(e.target.value); });
 
