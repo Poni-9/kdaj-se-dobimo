@@ -108,6 +108,11 @@
   .lab{font-weight:800;font-size:13px}
   /* landing */
   .hero{text-align:center;padding:20px 6px 4px} .hero h2{font-size:22px} .hero p{color:var(--muted);margin:10px auto 0;max-width:440px;font-size:14.5px}
+  .steps{display:flex;flex-direction:column;gap:14px}
+  .step{display:flex;gap:13px;align-items:flex-start}
+  .step .n{flex:none;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-weight:800;display:grid;place-items:center;font-size:14px;box-shadow:0 4px 10px rgba(109,94,252,.3)}
+  .step .tx b{font-weight:800;font-size:14.5px}
+  .step .tx .sub{font-size:13px;color:var(--muted);margin-top:1px}
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1a1c24;color:#fff;padding:12px 18px;border-radius:14px;font-weight:700;z-index:100;box-shadow:0 10px 34px rgba(0,0,0,.28);font-size:14px}
 </style>
 </head>
@@ -255,8 +260,9 @@ function renderParticipant(){
   const myCount = state.me ? state.data.busy.filter(b=>b.member_id===state.me.id).length : 0;
   let html=header();
   if(!state.me){
-    html+=`<div class="ask"><h4>Kako ti je ime?</h4><div class="row"><input id="nameInput" placeholder="npr. Boštjan" /><button class="btn" data-act="join">Naprej</button></div>
-      <div class="hint" style="margin-top:8px">Označil/-a boš samo svoje proste/zasedene dni. Odgovore vidi le organizator.</div></div>`;
+    html+=`<div class="ask"><h4>Kdaj imaš čas?</h4>
+      <div class="hint" style="margin:-4px 0 10px">Vpiši ime, nato v koledarju spodaj tapni dneve, ko <b>NE moreš</b>. Vidiš samo svoj vnos.</div>
+      <div class="row"><input id="nameInput" placeholder="Tvoje ime, npr. Boštjan" /><button class="btn" data-act="join">Naprej</button></div></div>`;
   }
   html+=`<div class="card pad">
     ${monthNav()}
@@ -374,12 +380,21 @@ function renderLanding(){
   const rooms=getRooms();
   const roomsHtml=rooms.length?`<div class="card pad" style="margin-top:16px"><h4 style="margin-bottom:12px">Nazadnje</h4><div style="display:flex;flex-direction:column;gap:10px">${rooms.map(r=>`<button class="btn ghost wide" data-land="open" data-code="${esc(r.code)}" data-results="${r.results?1:0}" style="justify-content:space-between">${esc(r.name)}<span class="muted" style="font-weight:600">${r.results?'rezultati':'anketa'} · ${esc(r.code)}</span></button>`).join("")}</div></div>`:"";
   $app.innerHTML=`${header("anketa razpoložljivosti")}
-    <div class="hero"><h2>Kdaj ima ekipa čas?</h2><p>Ustvari anketo, pošlji povezavo. Vsak označi, kdaj ne more. Ti dobiš rezultate in najboljši dan — <b>rezultate vidiš samo ti</b>.</p></div>
-    <div class="card pad" style="margin-top:8px"><h4>Ustvari anketo</h4>
+    <div class="hero"><h2>Kdaj ima ekipa čas?</h2><p>Najlažji način, da skupina najde skupni termin.</p></div>
+    <div class="card pad" style="margin-top:10px">
+      <h4 style="margin-bottom:16px">Kako deluje</h4>
+      <div class="steps">
+        <div class="step"><div class="n">1</div><div class="tx"><b>Ustvariš anketo</b><div class="sub">Vpišeš ime skupine in dobiš svojo povezavo.</div></div></div>
+        <div class="step"><div class="n">2</div><div class="tx"><b>Pošlješ povezavo ekipi</b><div class="sub">Vsak vpiše ime in na koledarju označi, kdaj <b>NE more</b>.</div></div></div>
+        <div class="step"><div class="n">3</div><div class="tx"><b>Dobiš najboljši dan</b><div class="sub">Koledar sam pokaže, kdaj je največ ljudi prostih. Te rezultate vidiš samo ti.</div></div></div>
+      </div>
+    </div>
+    <div class="card pad" style="margin-top:14px"><h4>Začni tukaj</h4>
       <label class="fld" style="margin-top:12px"><span>Ime skupine</span><input id="l_name" placeholder="npr. Nogometna raja" /></label>
-      <button class="btn wide" data-land="create">Ustvari in dobi povezavo →</button></div>
-    <div class="card pad" style="margin-top:14px"><h4>Si dobil povezavo?</h4>
-      <div class="row" style="margin-top:12px"><input id="l_code" placeholder="koda, npr. klapa-482" /><button class="btn ghost" data-land="join" style="white-space:nowrap">Vstopi</button></div></div>
+      <button class="btn wide" data-land="create">Ustvari anketo in dobi povezavo →</button></div>
+    <div class="card pad" style="margin-top:14px"><h4>Imaš že kodo?</h4>
+      <div class="hint" style="margin-top:2px">Če ti je nekdo poslal povezavo, jo samo odpri. Kodo vpiši le, če nimaš povezave.</div>
+      <div class="row" style="margin-top:12px"><input id="l_code" placeholder="npr. klapa-482" /><button class="btn ghost" data-land="join" style="white-space:nowrap">Vstopi</button></div></div>
     ${roomsHtml}
     ${!ONLINE?`<p class="hint" style="text-align:center;margin-top:18px">Lokalni način: podatki ostanejo na tej napravi.</p>`:""}`;
   $app.onclick=async (e)=>{
