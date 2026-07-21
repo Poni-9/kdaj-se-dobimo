@@ -46,6 +46,7 @@
   /* ask */
   .ask{background:var(--brand-soft);border:1px solid #e2ddff;border-radius:16px;padding:16px;margin-bottom:16px}
   .ask h4{font-size:15.5px;margin-bottom:12px}
+  .donecheck{width:66px;height:66px;border-radius:50%;background:var(--green-soft);color:var(--green);display:grid;place-items:center;font-size:34px;font-weight:900;margin:4px auto 14px}
   /* role banner */
   .banner{border-radius:16px;padding:16px;margin-bottom:16px}
   .banner.you{background:#fff8e8;border:1px solid #f0e2bd}
@@ -217,6 +218,8 @@ let store=null, unsub=null, reloadTimer=null;
 const state={ code:null, view:"participant", me:null, ym:{y:new Date().getFullYear(),m:new Date().getMonth()}, data:{group:{threshold:6,name:""},members:[],busy:[]}, error:null, overlay:null, showBrk:false };
 function getMe(code){ try{return JSON.parse(localStorage.getItem("ksd-me:"+code));}catch(e){return null;} }
 function setMe(code,me){ localStorage.setItem("ksd-me:"+code,JSON.stringify(me)); }
+function getDone(code){ return localStorage.getItem("ksd-done:"+code)==="1"; }
+function setDone(code,v){ if(v) localStorage.setItem("ksd-done:"+code,"1"); else localStorage.removeItem("ksd-done:"+code); }
 function rememberRoom(code,name,results){ let l=[]; try{l=JSON.parse(localStorage.getItem("ksd-rooms"))||[];}catch(e){} l=l.filter(r=>r.code!==code); l.unshift({code,name:name||code,results:!!results}); localStorage.setItem("ksd-rooms",JSON.stringify(l.slice(0,8))); }
 function getRooms(){ try{return JSON.parse(localStorage.getItem("ksd-rooms"))||[];}catch(e){return [];} }
 function busySet(){ const s=new Set(); for(const b of state.data.busy) s.add(b.member_id+"|"+b.day); return s; }
@@ -249,6 +252,22 @@ function render(){
 
 /* ---- POGLED: udeleženec (označi zasedene dni) ---- */
 function renderParticipant(){
+  let html=header();
+  if(!state.me){
+    html+=`<div class="ask"><h4>Kdaj imaš čas?</h4>
+      <div class="hint" style="margin:-4px 0 10px">Vpiši ime, nato v koledarju spodaj tapni dneve, ko <b>NE moreš</b>. Vidiš samo svoj vnos.</div>
+      <div class="row"><input id="nameInput" placeholder="Tvoje ime, npr. Boštjan" /><button class="btn" data-act="join">Naprej</button></div></div>`;
+  }
+  const myCount = state.me ? state.data.busy.filter(b=>b.member_id===state.me.id).length : 0;
+  if(state.me && getDone(state.code)){
+    html+=`<div class="card pad" style="text-align:center;padding:26px 18px">
+      <div class="donecheck">✓</div>
+      <h3>Shranjeno! Hvala, ${esc(state.me.name)}.</h3>
+      <p class="hint" style="margin:10px auto 0;max-width:340px">Označil/-a si <b>${myCount}</b> ${myCount===1?'dan':'dni'}, ko ne moreš. Organizator zdaj vidi, kdaj imaš čas.</p>
+      <button class="btn ghost wide" data-act="edit" style="margin-top:18px">Uredi moje odgovore</button>
+    </div>`;
+    $app.innerHTML=html; return;
+  }
   const bs=busySet(), {y,m}=state.ym, cells=L.monthMatrix(y,m), todayStr=L.ymd(new Date());
   let grid="";
   for(const dt of cells){
@@ -257,24 +276,20 @@ function renderParticipant(){
     const cls=["cell"]; if(out)cls.push("out"); if(!out&&iBusy)cls.push("mine"); if(ds===todayStr)cls.push("today"); if(!out&&past)cls.push("past");
     grid+=`<div class="${cls.join(" ")}" ${out?"":`data-act="pday" data-d="${ds}"`}><span class="d">${dt.getDate()}</span></div>`;
   }
-  const myCount = state.me ? state.data.busy.filter(b=>b.member_id===state.me.id).length : 0;
-  let html=header();
-  if(!state.me){
-    html+=`<div class="ask"><h4>Kdaj imaš čas?</h4>
-      <div class="hint" style="margin:-4px 0 10px">Vpiši ime, nato v koledarju spodaj tapni dneve, ko <b>NE moreš</b>. Vidiš samo svoj vnos.</div>
-      <div class="row"><input id="nameInput" placeholder="Tvoje ime, npr. Boštjan" /><button class="btn" data-act="join">Naprej</button></div></div>`;
-  }
   html+=`<div class="card pad">
     ${monthNav()}
-    <div class="instr">Živjo${state.me?", <b>"+esc(state.me.name)+"</b>":""}! Tapni dneve, ko <b>NE moreš</b>. <span class="sq" style="background:var(--pink)"></span> = ne morem</div>
+    <div class="instr">${state.me?"Živjo, <b>"+esc(state.me.name)+"</b>! ":""}Tapni dneve, ko <b>NE moreš</b>. <span class="sq" style="background:var(--pink)"></span> = ne morem</div>
     ${dowRow()}
     <div class="grid">${grid}</div>
-  </div>
-  <div class="card foot">
-    <span class="hint" style="padding:0 6px">${state.me?("Zasedenih dni: <b style='color:var(--ink)'>"+myCount+"</b> · samodejno shranjeno"):"Vpiši ime zgoraj"}</span>
-    ${state.me?`<button data-act="rename">Spremeni ime</button>`:""}
-  </div>
-  <div class="hint" style="text-align:center;margin-top:16px">Vidiš samo svoj vnos. Skupne rezultate vidi organizator.</div>`;
+  </div>`;
+  if(state.me){
+    html+=`<button class="btn wide" data-act="finish" style="margin-top:14px">Shrani</button>
+    <div class="row" style="justify-content:space-between;margin-top:12px;padding:0 6px">
+      <span class="hint">Zasedenih dni: <b style="color:var(--ink)">${myCount}</b></span>
+      <button class="hint" data-act="rename" style="font-weight:700">Spremeni ime</button>
+    </div>`;
+  }
+  html+=`<div class="hint" style="text-align:center;margin-top:16px">Vidiš samo svoj vnos. Skupne rezultate vidi organizator.</div>`;
   $app.innerHTML=html;
 }
 
@@ -366,6 +381,8 @@ $app.addEventListener("click", async (e)=>{
   if(act==="rename"){ openOverlay(renameOverlay()); return; }
   if(act==="saverename"){ const nn=document.getElementById("rn_name").value.trim(); if(!nn) return; await store.renameMember(state.me.id,nn); state.me.name=nn; setMe(state.code,state.me); closeOverlay(); await reload(); toast("Shranjeno"); return; }
   if(act==="pday"){ if(!(await ensureMe())) return; await store.toggleBusy(state.me.id,t.dataset.d); await reload(); return; }
+  if(act==="finish"){ if(!(await ensureMe())) return; setDone(state.code,true); try{window.scrollTo(0,0)}catch(e){} render(); return; }
+  if(act==="edit"){ setDone(state.code,false); render(); return; }
   if(act==="rday"){ openOverlay(dayInfoOverlay(t.dataset.d)); return; }
   if(act==="members"){ openOverlay(membersOverlay()); return; }
   if(act==="thrplus"){ await setThr((state.data.group.threshold||0)+1); return; }
