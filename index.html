@@ -223,7 +223,9 @@ function setDone(code,v){ if(v) localStorage.setItem("ksd-done:"+code,"1"); else
 function rememberRoom(code,name,results){ let l=[]; try{l=JSON.parse(localStorage.getItem("ksd-rooms"))||[];}catch(e){} l=l.filter(r=>r.code!==code); l.unshift({code,name:name||code,results:!!results}); localStorage.setItem("ksd-rooms",JSON.stringify(l.slice(0,8))); }
 function getRooms(){ try{return JSON.parse(localStorage.getItem("ksd-rooms"))||[];}catch(e){return [];} }
 function busySet(){ const s=new Set(); for(const b of state.data.busy) s.add(b.member_id+"|"+b.day); return s; }
-function shareURL(){ return location.origin+location.pathname+"#/r/"+encodeURIComponent(state.code); }
+const APP_URL="https://poni-9.github.io/kdaj-se-dobimo/";
+function isWebHosted(){ return location.protocol==="http:"||location.protocol==="https:"; }
+function shareURL(){ const base=isWebHosted()?(location.origin+location.pathname):APP_URL; return base+"#/r/"+encodeURIComponent(state.code); }
 
 /* ===== USMERJEVALNIK ===== */
 function parseRoute(){ const h=location.hash.replace(/^#\/?/,""); const p=h.split("/").filter(Boolean); if(p[0]==="r"&&p[1]) return {code:decodeURIComponent(p[1]), view:p[2]==="rezultati"?"results":"participant"}; return {code:null}; }
@@ -314,7 +316,8 @@ function renderResults(){
   html+=`<div class="banner share">
     <div style="font-weight:800">Pošlji to povezavo ekipi</div>
     <div class="hint" style="margin-top:2px">Vsak vpiše ime in označi, kdaj ne more. Te (rezultatov) strani ne deli — obdrži jo zase.</div>
-    <div class="linkbox"><input id="shareLink" readonly value="${esc(shareURL())}" /><button class="btn" data-act="copyshare" style="white-space:nowrap">Kopiraj</button></div>
+    ${!isWebHosted()?`<div class="hint" style="margin-top:8px;color:#b06a00;font-weight:600">Odprl/-a si datoteko s svojega računalnika. Za urejanje raje odpri <b>poni-9.github.io/kdaj-se-dobimo</b>. Spodnja povezava je že prava za deljenje.</div>`:""}
+    <div class="linkbox"><input id="shareLink" readonly value="${esc(shareURL())}"><button class="btn" data-act="copyshare" style="white-space:nowrap">Kopiraj</button></div>
   </div>`;
   html+=`<div class="card pad">
     ${monthNav()}
