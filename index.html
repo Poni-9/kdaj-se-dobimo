@@ -30,6 +30,7 @@
   .btn:active{transform:scale(.98)} .btn:hover{filter:brightness(1.04)}
   .btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line);box-shadow:none}
   .btn.wide{width:100%}
+  .btn.green{background:linear-gradient(135deg,var(--green),#34d399);box-shadow:0 6px 16px rgba(16,185,129,.28)}
   .fld{display:block;margin-bottom:14px} .fld span{display:block;font-size:13px;color:var(--muted);font-weight:700;margin-bottom:6px}
   /* header */
   .head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 16px}
@@ -115,6 +116,27 @@
   .step .tx b{font-weight:800;font-size:14.5px}
   .step .tx .sub{font-size:13px;color:var(--muted);margin-top:1px}
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1a1c24;color:#fff;padding:12px 18px;border-radius:14px;font-weight:700;z-index:100;box-shadow:0 10px 34px rgba(0,0,0,.28);font-size:14px}
+  /* vote */
+  .vlist{display:flex;flex-direction:column;gap:10px;margin:14px 0}
+  .vcard{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;background:#fff;border:2px solid var(--line);cursor:pointer;transition:transform .06s,border-color .15s,background .15s}
+  .vcard:active{transform:scale(.98)}
+  .vcard .vcheck{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;flex:none;font-size:15px;font-weight:900;transition:background .15s,border-color .15s;color:transparent}
+  .vcard.voted{border-color:var(--brand);background:var(--brand-soft)}
+  .vcard.voted .vcheck{background:var(--brand);border-color:var(--brand);color:#fff}
+  .vcard .vinfo{flex:1}
+  .vcard .vday{font-weight:800;font-size:15px}
+  .vcard .vcount{font-size:12.5px;color:var(--muted);font-weight:600}
+  .vresult{display:flex;align-items:center;gap:12px;padding:11px 4px;border-top:1px solid var(--line)}
+  .vresult:first-of-type{border-top:0}
+  .vresult .vr-info{flex:1;min-width:0}
+  .vresult .vr-day{font-weight:700;font-size:14px}
+  .vresult .vr-votes{font-size:12px;color:var(--muted);font-weight:600}
+  .vresult .vr-bar{flex:none;width:80px;height:10px;background:#eef0f6;border-radius:6px;overflow:hidden}
+  .vresult .vr-fill{height:100%;border-radius:6px;background:linear-gradient(135deg,var(--brand),var(--brand2));transition:width .3s}
+  .vresult.winner .vr-fill{background:linear-gradient(135deg,var(--green),#34d399)}
+  .vresult.winner .vr-day{color:var(--green-ink)}
+  .vresult .vr-num{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:15px;background:#eef0f6;color:var(--muted)}
+  .vresult.winner .vr-num{background:var(--green);color:#fff}
 </style>
 </head>
 <body>
@@ -172,20 +194,25 @@ const IC={
   cal:_svg+'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>',
   users:_svg+'<circle cx="9" cy="8" r="3.2"/><path d="M2.8 19a6.2 6.2 0 0 1 12.4 0"/><path d="M16.5 5.3a3 3 0 0 1 0 5.6M17 13.4a5.5 5.5 0 0 1 4.2 5.6"/></svg>',
   share:_svg+'<circle cx="6" cy="12" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="17" cy="18" r="2.4"/><path d="M8.2 10.9l6.6-3.8M8.2 13.1l6.6 3.8"/></svg>',
-  star:'<svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2l2.6 5.6 6 .7-4.5 4.1 1.2 5.9L12 16.9 6.7 19.5l1.2-5.9L3.4 9.5l6-.7z"/></svg>'
+  star:'<svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2l2.6 5.6 6 .7-4.5 4.1 1.2 5.9L12 16.9 6.7 19.5l1.2-5.9L3.4 9.5l6-.7z"/></svg>',
+  vote:_svg+'<path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>'
 };
 
 /* ===== SHRAMBA: lokalno ===== */
 class LocalStore{
   constructor(code){ this.code=code; this.key="ksd:"+code; }
-  _r(){ try{const r=localStorage.getItem(this.key); if(r) return JSON.parse(r);}catch(e){} return {group:{id:this.code,name:"",threshold:6},members:[],busy:[]}; }
+  _r(){ try{const r=localStorage.getItem(this.key); if(r){const d=JSON.parse(r); d.votes=d.votes||[]; d.group.phase=d.group.phase||"availability"; d.group.final_days=d.group.final_days||[]; return d;}}catch(e){} return {group:{id:this.code,name:"",threshold:6,phase:"availability",final_days:[]},members:[],busy:[],votes:[]}; }
   _w(db){ localStorage.setItem(this.key,JSON.stringify(db)); }
   async loadAll(){ return this._r(); }
   async ensureGroup(name){ const db=this._r(); if(name&&!db.group.name){db.group.name=name; this._w(db);} }
   async setThreshold(n){ const db=this._r(); db.group.threshold=n; this._w(db); }
   async addMember(name){ const db=this._r(); const m={id:uuid(),name}; db.members.push(m); this._w(db); return m; }
   async renameMember(id,name){ const db=this._r(); const m=db.members.find(x=>x.id===id); if(m){m.name=name; this._w(db);} }
+  async deleteMember(mid){ const db=this._r(); db.members=db.members.filter(m=>m.id!==mid); db.busy=db.busy.filter(b=>b.member_id!==mid); db.votes=db.votes.filter(v=>v.member_id!==mid); this._w(db); }
   async toggleBusy(mid,day){ const db=this._r(); const i=db.busy.findIndex(b=>b.member_id===mid&&b.day===day); if(i>=0) db.busy.splice(i,1); else db.busy.push({member_id:mid,day}); this._w(db); }
+  async startFinalVote(days){ const db=this._r(); db.group.phase="finalvote"; db.group.final_days=days; db.votes=[]; this._w(db); }
+  async cancelFinalVote(){ const db=this._r(); db.group.phase="availability"; db.group.final_days=[]; db.votes=[]; this._w(db); }
+  async toggleVote(mid,day){ const db=this._r(); const i=db.votes.findIndex(v=>v.member_id===mid&&v.day===day); if(i>=0) db.votes.splice(i,1); else db.votes.push({member_id:mid,day}); this._w(db); }
   subscribe(cb){ const h=e=>{ if(e.key===this.key) cb(); }; window.addEventListener("storage",h); return ()=>window.removeEventListener("storage",h); }
 }
 /* ===== SHRAMBA: Supabase ===== */
@@ -199,38 +226,65 @@ class CloudStore{
       sb.from("busy_days").select("member_id,day").eq("group_id",code)
     ]);
     for(const r of [g,m,b]) if(r.error) throw r.error;
-    return { group:g.data||{id:code,name:"",threshold:6}, members:m.data||[], busy:b.data||[] };
+    let votes = [];
+    try { const v = await sb.from("votes").select("member_id,day").eq("group_id",code); if(!v.error) votes = v.data||[]; } catch(e){}
+    const grp = g.data||{id:code,name:"",threshold:6};
+    grp.phase = grp.phase || "availability";
+    grp.final_days = grp.final_days || [];
+    return { group:grp, members:m.data||[], busy:b.data||[], votes };
   }
   async ensureGroup(name){ const {error}=await this.sb.from("groups").upsert({id:this.code,name:name||null},{onConflict:"id",ignoreDuplicates:true}); if(error&&error.code!=="23505") throw error; }
   async setThreshold(n){ const {error}=await this.sb.from("groups").update({threshold:n}).eq("id",this.code); if(error) throw error; }
   async addMember(name){ const {data,error}=await this.sb.from("members").insert({group_id:this.code,name}).select().single(); if(error) throw error; return data; }
   async renameMember(id,name){ const {error}=await this.sb.from("members").update({name}).eq("id",id); if(error) throw error; }
+  async deleteMember(mid){ await this.sb.from("busy_days").delete().eq("member_id",mid); try{await this.sb.from("votes").delete().eq("member_id",mid);}catch(e){} const {error}=await this.sb.from("members").delete().eq("id",mid); if(error) throw error; }
   async toggleBusy(mid,day){
-    const {data}=await this.sb.from("busy_days").select("id").eq("member_id",mid).eq("day",day).maybeSingle();
-    if(data) await this.sb.from("busy_days").delete().eq("id",data.id);
-    else await this.sb.from("busy_days").insert({group_id:this.code,member_id:mid,day});
+    const r1 = await this.sb.from("busy_days").select("id").eq("member_id",mid).eq("day",day).maybeSingle();
+    if(r1.error) throw r1.error;
+    if(r1.data) { const r2 = await this.sb.from("busy_days").delete().eq("id",r1.data.id); if(r2.error) throw r2.error; }
+    else { const r3 = await this.sb.from("busy_days").insert({group_id:this.code,member_id:mid,day}); if(r3.error) throw r3.error; }
   }
-  subscribe(cb){ const ch=this.sb.channel("room-"+this.code); ["groups","members","busy_days"].forEach(t=>ch.on("postgres_changes",{event:"*",schema:"public",table:t},cb)); ch.subscribe(); return ()=>this.sb.removeChannel(ch); }
+  async startFinalVote(days){
+    try{await this.sb.from("votes").delete().eq("group_id",this.code);}catch(e){}
+    const {error}=await this.sb.from("groups").update({phase:"finalvote",final_days:days}).eq("id",this.code);
+    if(error) throw error;
+  }
+  async cancelFinalVote(){
+    try{await this.sb.from("votes").delete().eq("group_id",this.code);}catch(e){}
+    const {error}=await this.sb.from("groups").update({phase:"availability",final_days:[]}).eq("id",this.code);
+    if(error) throw error;
+  }
+  async toggleVote(mid,day){
+    const r1 = await this.sb.from("votes").select("id").eq("member_id",mid).eq("day",day).maybeSingle();
+    if(r1.error) throw r1.error;
+    if(r1.data) { const r2 = await this.sb.from("votes").delete().eq("id",r1.data.id); if(r2.error) throw r2.error; }
+    else { const r3 = await this.sb.from("votes").insert({group_id:this.code,member_id:mid,day}); if(r3.error) throw r3.error; }
+  }
+  subscribe(cb){ const ch=this.sb.channel("room-"+this.code); ["groups","members","busy_days","votes"].forEach(t=>ch.on("postgres_changes",{event:"*",schema:"public",table:t},cb)); ch.subscribe(); return ()=>this.sb.removeChannel(ch); }
 }
 
 /* ===== STANJE ===== */
 let store=null, unsub=null, reloadTimer=null;
-const state={ code:null, view:"participant", me:null, ym:{y:new Date().getFullYear(),m:new Date().getMonth()}, data:{group:{threshold:6,name:""},members:[],busy:[]}, error:null, overlay:null, showBrk:false };
+const state={ code:null, view:"participant", me:null, ym:{y:new Date().getFullYear(),m:new Date().getMonth()}, data:{group:{threshold:6,name:"",phase:"availability",final_days:[]},members:[],busy:[],votes:[]}, error:null, overlay:null, showBrk:false };
 function getMe(code){ try{return JSON.parse(localStorage.getItem("ksd-me:"+code));}catch(e){return null;} }
 function setMe(code,me){ localStorage.setItem("ksd-me:"+code,JSON.stringify(me)); }
 function getDone(code){ return localStorage.getItem("ksd-done:"+code)==="1"; }
 function setDone(code,v){ if(v) localStorage.setItem("ksd-done:"+code,"1"); else localStorage.removeItem("ksd-done:"+code); }
+function getVoteDone(code){ return localStorage.getItem("ksd-votedone:"+code)==="1"; }
+function setVoteDone(code,v){ if(v) localStorage.setItem("ksd-votedone:"+code,"1"); else localStorage.removeItem("ksd-votedone:"+code); }
 function rememberRoom(code,name,results){ let l=[]; try{l=JSON.parse(localStorage.getItem("ksd-rooms"))||[];}catch(e){} l=l.filter(r=>r.code!==code); l.unshift({code,name:name||code,results:!!results}); localStorage.setItem("ksd-rooms",JSON.stringify(l.slice(0,8))); }
 function getRooms(){ try{return JSON.parse(localStorage.getItem("ksd-rooms"))||[];}catch(e){return [];} }
 function busySet(){ const s=new Set(); for(const b of state.data.busy) s.add(b.member_id+"|"+b.day); return s; }
+function votesSet(){ const s=new Set(); for(const v of state.data.votes) s.add(v.member_id+"|"+v.day); return s; }
 const APP_URL="https://poni-9.github.io/kdaj-se-dobimo/";
 function isWebHosted(){ return location.protocol==="http:"||location.protocol==="https:"; }
 function shareURL(){ const base=isWebHosted()?(location.origin+location.pathname):APP_URL; return base+"#/r/"+encodeURIComponent(state.code); }
 function overviewURL(){ const base=isWebHosted()?(location.origin+location.pathname):APP_URL; return base+"#/r/"+encodeURIComponent(state.code)+"/pregled"; }
+function voteURL(){ const base=isWebHosted()?(location.origin+location.pathname):APP_URL; return base+"#/r/"+encodeURIComponent(state.code)+"/glasuj"; }
 
 /* ===== USMERJEVALNIK ===== */
-function parseRoute(){ const h=location.hash.replace(/^#\/?/,""); const p=h.split("/").filter(Boolean); if(p[0]==="r"&&p[1]){ var v=p[2]==="rezultati"?"results":(p[2]==="pregled"?"overview":"participant"); return {code:decodeURIComponent(p[1]), view:v}; } return {code:null}; }
-function goto(code,view){ var suf=view==="results"?"/rezultati":(view==="overview"?"/pregled":""); location.hash="#/r/"+encodeURIComponent(code)+suf; }
+function parseRoute(){ const h=location.hash.replace(/^#\/?/,""); const p=h.split("/").filter(Boolean); if(p[0]==="r"&&p[1]){ var v=p[2]==="rezultati"?"results":(p[2]==="pregled"?"overview":(p[2]==="glasuj"?"vote":"participant")); return {code:decodeURIComponent(p[1]), view:v}; } return {code:null}; }
+function goto(code,view){ var suf=view==="results"?"/rezultati":(view==="overview"?"/pregled":(view==="vote"?"/glasuj":"")); location.hash="#/r/"+encodeURIComponent(code)+suf; }
 
 /* ===== NALAGANJE ===== */
 function scheduleReload(){ clearTimeout(reloadTimer); reloadTimer=setTimeout(reload,150); }
@@ -248,7 +302,7 @@ function dowRow(){ return `<div class="grid" style="margin-bottom:7px">${L.DOW_S
 
 function render(){
   if(!state.code){ renderLanding(); return; }
-  if(state.view==="results") renderResults(); else if(state.view==="overview") renderOverview(); else renderParticipant();
+  if(state.view==="results") renderResults(); else if(state.view==="overview") renderOverview(); else if(state.view==="vote") renderVote(); else renderParticipant();
   if(state.overlay) $app.insertAdjacentHTML("beforeend",state.overlay);
   const ni=document.getElementById("nameInput"); if(ni) ni.focus();
 }
@@ -325,11 +379,122 @@ function renderOverview(){
       <div style="flex:1"><div style="font-weight:700">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}</div><div class="hint">${x.free} od ${members.length} prostih</div></div>
     </div>`; }).join("")}
   </div>`:`<div class="card pad" style="margin-top:14px"><div class="hint" style="text-align:center">Ekipa še ni označila razpoložljivosti.</div></div>`;
+
+  /* Prikaz glasovanja v pregledu */
+  if(d.group.phase==="finalvote" && (d.group.final_days||[]).length){
+    const voteCounts={}, finalDays=(d.group.final_days||[]).slice().sort();
+    for(const v of d.votes) voteCounts[v.day]=(voteCounts[v.day]||0)+1;
+    const maxV=Math.max(1,...finalDays.map(ds=>voteCounts[ds]||0));
+    const sorted=finalDays.slice().sort((a,b)=>(voteCounts[b]||0)-(voteCounts[a]||0));
+    const topCount=voteCounts[sorted[0]]||0;
+    html+=`<div class="card pad" style="margin-top:14px">
+      <div class="sectitle">${IC.vote} Končno glasovanje</div>
+      <div class="hint" style="margin:-4px 0 12px">Ekipa glasuje za najboljši dan. Tukaj so rezultati.</div>
+      ${sorted.map(ds=>{const dt=L.parseYMD(ds),c=voteCounts[ds]||0,isW=c>0&&c===topCount;
+        return `<div class="vresult${isW?' winner':''}">
+          <div class="vr-num">${c}</div>
+          <div class="vr-info"><div class="vr-day">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}</div><div class="vr-votes">${c} ${c===1?'glas':'glasov'}</div></div>
+          <div class="vr-bar"><div class="vr-fill${isW?' winner':''}" style="width:${Math.round(c/maxV*100)}%"></div></div>
+        </div>`;}).join("")}
+    </div>`;
+  }
+
   html+=`<div class="card foot">
     <button data-act="members">${IC.users}${members.length} odgovorilo</button>
     <button data-act="copyov">${IC.share}Deli povezavo</button>
   </div>
   <div class="hint" style="text-align:center;margin-top:16px">Samo za ogled. Urejanje ima organizator na svoji strani.</div>`;
+  $app.innerHTML=html;
+}
+
+/* ---- POGLED: glasovanje (udeleženci glasujejo za končni dan) ---- */
+function renderVote(){
+  const d=state.data, finalDays=(d.group.final_days||[]).slice().sort();
+  let html=header((d.group.name||state.code)+" · glasovanje");
+
+  if(d.group.phase!=="finalvote" || !finalDays.length){
+    html+=`<div class="card pad" style="text-align:center;padding:30px 18px">
+      <div style="font-size:40px;margin-bottom:12px">🗳️</div>
+      <h3>Glasovanje ni aktivno</h3>
+      <p class="hint" style="margin-top:8px;max-width:340px;margin-left:auto;margin-right:auto">Organizator še ni začel končnega glasovanja. Ko bo aktivno, boš tukaj lahko glasoval/-a za najboljši dan.</p>
+    </div>`;
+    $app.innerHTML=html; return;
+  }
+
+  if(!state.me){
+    const showNew = state.showNewMember;
+    if(!showNew && d.members.length > 0){
+      html+=`<div class="ask"><h4>Kdo glasuje?</h4>
+        <div class="hint" style="margin:-4px 0 10px">Izberi svoje ime s seznama ali dodaj novega.</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${d.members.map(m=>`<button class="btn ghost wide" data-act="selectme" data-mid="${m.id}" data-mname="${esc(m.name)}" style="justify-content:flex-start">${esc(m.name)}</button>`).join('')}
+          <button class="btn ghost wide" data-act="shownewme" style="justify-content:flex-start;color:var(--brand-ink);border-color:var(--brand-soft);background:var(--brand-soft)">+ Nisem na seznamu (novo ime)</button>
+        </div>
+      </div>`;
+    } else {
+      html+=`<div class="ask"><h4>Kdo glasuje?</h4>
+        <div class="hint" style="margin:-4px 0 10px">Vpiši svoje ime.</div>
+        <div class="row"><input id="nameInput" placeholder="Tvoje ime" /><button class="btn" data-act="join">Naprej</button></div>
+        ${d.members.length > 0 ? `<button class="hint" data-act="hidenewme" style="margin-top:10px;font-weight:600">Nisem nov, prikaži seznam imen</button>` : ''}
+      </div>`;
+    }
+  }
+
+  const vs = votesSet();
+  const myVoteCount = state.me ? d.votes.filter(v=>v.member_id===state.me.id).length : 0;
+
+  if(state.me && getVoteDone(state.code)){
+    const voteCounts={};
+    for(const v of d.votes) voteCounts[v.day]=(voteCounts[v.day]||0)+1;
+    const maxV=Math.max(1,...finalDays.map(ds=>voteCounts[ds]||0));
+    const sorted=finalDays.slice().sort((a,b)=>(voteCounts[b]||0)-(voteCounts[a]||0));
+    const topCount=voteCounts[sorted[0]]||0;
+    html+=`<div class="card pad" style="text-align:center;padding:26px 18px">
+      <div class="donecheck">✓</div>
+      <h3>Glas oddan! Hvala, ${esc(state.me.name)}.</h3>
+      <p class="hint" style="margin:10px auto 0;max-width:340px">Glasoval/-a si za <b>${myVoteCount}</b> ${myVoteCount===1?'dan':'dni'}.</p>
+      <button class="btn ghost wide" data-act="editvote" style="margin-top:18px">Spremeni glas</button>
+    </div>`;
+    html+=`<div class="card pad" style="margin-top:14px">
+      <div class="sectitle">${IC.vote} Rezultati glasovanja</div>
+      ${sorted.map(ds=>{const dt=L.parseYMD(ds),c=voteCounts[ds]||0,isW=c>0&&c===topCount;
+        return `<div class="vresult${isW?' winner':''}">
+          <div class="vr-num">${c}</div>
+          <div class="vr-info"><div class="vr-day">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}</div><div class="vr-votes">${c} ${c===1?'glas':'glasov'}</div></div>
+          <div class="vr-bar"><div class="vr-fill${isW?' winner':''}" style="width:${Math.round(c/maxV*100)}%"></div></div>
+        </div>`;}).join("")}
+    </div>`;
+    $app.innerHTML=html; return;
+  }
+
+  /* Glasovalni seznam */
+  const voteCounts={};
+  for(const v of d.votes) voteCounts[v.day]=(voteCounts[v.day]||0)+1;
+
+  html+=`<div class="card pad">
+    <h4 style="margin-bottom:4px">Izberi dan(e)</h4>
+    <div class="hint" style="margin-bottom:8px">${state.me?"Živjo, <b>"+esc(state.me.name)+"</b>! ":""}Klikni dan(e), ko bi se najraje dobili.</div>
+    <div class="vlist">`;
+
+  for(const ds of finalDays){
+    const dt = L.parseYMD(ds);
+    const dayName = cap(L.DOW_LONG[L.weekdayMon0(dt)]);
+    const dateStr = dt.getDate() + ". " + L.MONTHS[dt.getMonth()];
+    const isVoted = state.me && vs.has(state.me.id+"|"+ds);
+    const count = voteCounts[ds] || 0;
+    html+=`<div class="vcard${isVoted?' voted':''}" data-act="vday" data-d="${ds}">
+      <div class="vcheck">✓</div>
+      <div class="vinfo"><div class="vday">${dayName}, ${dateStr}</div><div class="vcount">${count} ${count===1?'glas':'glasov'}</div></div>
+    </div>`;
+  }
+
+  html+=`</div></div>`;
+
+  if(state.me){
+    html+=`<button class="btn wide green" data-act="submitvote" style="margin-top:14px">Oddaj glas</button>
+    <div class="hint" style="text-align:center;margin-top:12px">Izbranih: <b style="color:var(--ink)">${myVoteCount}</b> ${myVoteCount===1?'dan':'dni'}</div>`;
+  }
+
   $app.innerHTML=html;
 }
 
@@ -362,6 +527,33 @@ function renderResults(){
     <div class="hint" style="margin-top:2px">Povezava samo za ogled — kdaj ima kdo čas in kateri je najboljši dan.</div>
     <div class="linkbox"><input id="ovLink" readonly value="${esc(overviewURL())}"><button class="btn" data-act="copyov" style="white-space:nowrap">Kopiraj</button></div>
   </div>`;
+
+  /* Banner za končno glasovanje */
+  const phase = d.group.phase || "availability";
+  const finalDays = (d.group.final_days || []).slice().sort();
+  if(phase==="finalvote" && finalDays.length){
+    const voteCounts={};
+    for(const v of d.votes) voteCounts[v.day]=(voteCounts[v.day]||0)+1;
+    const maxV=Math.max(1,...finalDays.map(ds=>voteCounts[ds]||0));
+    const sorted=finalDays.slice().sort((a,b)=>(voteCounts[b]||0)-(voteCounts[a]||0));
+    const topCount=voteCounts[sorted[0]]||0;
+    const totalVoters=new Set(d.votes.map(v=>v.member_id)).size;
+    html+=`<div class="banner" style="background:#fff8e8;border:1px solid #f0e2bd">
+      <div style="font-weight:800;display:flex;align-items:center;gap:8px">${IC.vote} 3 · Končno glasovanje <span style="font-size:12px;font-weight:600;color:var(--green);background:var(--green-soft);padding:3px 8px;border-radius:8px">aktivno</span></div>
+      <div class="hint" style="margin-top:4px">Pošlji to povezavo ekipi, da glasujejo za najboljši dan. Glasovalo: <b style="color:var(--ink)">${totalVoters}</b></div>
+      <div class="linkbox"><input id="voteLink" readonly value="${esc(voteURL())}"><button class="btn" data-act="copyvote" style="white-space:nowrap">Kopiraj</button></div>
+      <div style="margin-top:14px">
+        ${sorted.map(ds=>{const dt=L.parseYMD(ds),c=voteCounts[ds]||0,isW=c>0&&c===topCount;
+          return `<div class="vresult${isW?' winner':''}">
+            <div class="vr-num">${c}</div>
+            <div class="vr-info"><div class="vr-day">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}</div><div class="vr-votes">${c} ${c===1?'glas':'glasov'}</div></div>
+            <div class="vr-bar"><div class="vr-fill${isW?' winner':''}" style="width:${Math.round(c/maxV*100)}%"></div></div>
+          </div>`;}).join("")}
+      </div>
+      <button class="btn ghost wide" data-act="cancelfinal" style="margin-top:14px">Prekliči glasovanje</button>
+    </div>`;
+  }
+
   html+=`<div class="card pad">
     ${monthNav()}
     <div class="instr">Številka = koliko ljudi je takrat prostih. <span class="sq" style="background:var(--green)"></span> = vas je vsaj ${thr}. Tapni dan za kdo.</div>
@@ -375,6 +567,22 @@ function renderResults(){
       <div style="flex:1"><div style="font-weight:700">${cap(L.DOW_LONG[L.weekdayMon0(dt)])}, ${dt.getDate()}. ${L.MONTHS[dt.getMonth()]}</div><div class="hint">${x.free} od ${members.length} prostih</div></div>
     </div>`; }).join("")}
   </div>`:`<div class="card pad" style="margin-top:14px"><div class="hint" style="text-align:center">Ko ekipa označi razpoložljivost, se tu pokažejo najboljši dnevi.</div></div>`;
+
+  /* Gumb za začetek glasovanja */
+  if(phase==="availability" && members.length && bd.length){
+    const greenDays = L.monthDays(y,m).concat(
+      /* dodamo tudi vse prihodnje mesece, ki so zeleni — za zdaj samo trenutni mesec */
+    ).filter(ds=>{
+      if(ds<todayStr) return false;
+      const free=L.freeCountForDay(members,bs,ds);
+      return L.isGreen(free,thr);
+    });
+    if(greenDays.length){
+      html+=`<button class="btn wide green" data-act="startfinal" style="margin-top:14px">${IC.vote} Začni končno glasovanje (${greenDays.length} zelenih dni)</button>
+      <div class="hint" style="text-align:center;margin-top:8px">Ekipi se pošljejo samo zeleni dnevi, da skupaj izberejo najboljši termin.</div>`;
+    }
+  }
+
   html+=`<div class="card foot">
     <button data-act="members">${IC.users}${members.length} odgovorilo</button>
     <div class="stepper">Vsaj <button data-act="thrminus">−</button><b>${thr}</b><button data-act="thrplus">+</button></div>
@@ -395,15 +603,19 @@ function dayInfoOverlay(ds){
   return `<div class="sheet"><div class="grab"></div><div class="pad">
     <div class="row" style="justify-content:space-between"><h3>${title}</h3><button class="close" data-act="ovclose">✕</button></div>
     <div class="lab" style="margin:18px 0 8px;color:var(--green-ink);display:flex;align-items:center;gap:8px"><span class="sq" style="background:var(--green)"></span>Prosti (${free.length})</div>
-    <div class="peep">${free.length?free.map(m=>`<span class="tag free">${esc(m.name)}</span>`).join(""):'<span class="tag grey">nihče</span>'}</div>
+    <div class="peep">${free.length?free.map(m=>`<span class="tag free">${esc(m.name)}</span>`).join(''):'<span class="tag grey">nihče</span>'}</div>
     <div class="lab" style="margin:18px 0 8px;color:#d23a56;display:flex;align-items:center;gap:8px"><span class="sq" style="background:var(--pink)"></span>Ne morejo (${busy.length})</div>
-    <div class="peep">${busy.length?busy.map(m=>`<span class="tag busy">${esc(m.name)}</span>`).join(""):'<span class="tag grey">nihče</span>'}</div>
+    <div class="peep">${busy.length?busy.map(m=>`<span class="tag busy">${esc(m.name)}</span>`).join(''):'<span class="tag grey">nihče</span>'}</div>
   </div></div>`;
 }
 function membersOverlay(){
   const d=state.data;
-  const chips=d.members.length?d.members.map(m=>`<span class="tag grey">${esc(m.name)}</span>`).join(""):'<span class="muted">Še nihče ni odgovoril.</span>';
-  return `<div class="sheet"><div class="grab"></div><div class="pad"><div class="row" style="justify-content:space-between"><h3>Odgovorilo (${d.members.length})</h3><button class="close" data-act="ovclose">✕</button></div><div class="peep" style="margin-top:16px">${chips}</div></div></div>`;
+  const isOrg = state.view === "results";
+  const chips=d.members.length?d.members.map(m=>{
+    if(isOrg) return `<span class="tag grey" style="display:inline-flex;align-items:center;gap:6px">${esc(m.name)} <button data-act="delmember" data-mid="${m.id}" style="color:var(--muted);font-size:18px;padding:0;line-height:1;margin-top:-2px" title="Izbriši">&times;</button></span>`;
+    return `<span class="tag grey">${esc(m.name)}</span>`;
+  }).join(''):'<span class="muted">Še nihče ni odgovoril.</span>';
+  return `<div class="sheet"><div class="grab"></div><div class="pad"><div class="row" style="justify-content:space-between"><h3>Odgovorilo (${d.members.length})</h3><button class="close" data-act="ovclose">✕</button></div><div class="peep" style="margin-top:16px">${chips}</div><div class="hint" style="margin-top:12px;text-align:center">${isOrg?"Uporabnika lahko izbrišeš s klikom na križec.":""}</div></div></div>`;
 }
 function renameOverlay(){
   return `<div class="sheet"><div class="grab"></div><div class="pad"><div class="row" style="justify-content:space-between"><h3>Tvoje ime</h3><button class="close" data-act="ovclose">✕</button></div>
@@ -413,10 +625,11 @@ function renameOverlay(){
 
 /* ===== DEJANJA ===== */
 async function ensureMe(){ if(state.me) return true; toast("Najprej vpiši ime"); const ni=document.getElementById("nameInput"); if(ni) ni.focus(); return false; }
-async function doJoin(name){ name=(name||"").trim(); if(!name){ toast("Vpiši ime"); return; } await store.ensureGroup(state.data.group.name||state.code); const m=await store.addMember(name); state.me={id:m.id,name:m.name}; setMe(state.code,state.me); await reload(); toast("Živjo, "+name+"!"); }
+async function doJoin(name){ name=(name||"").trim(); if(!name){ toast("Vpiši ime"); return; } await store.ensureGroup(state.data.group.name||state.code); const ex=state.data.members.find(mm=>(mm.name||"").trim().toLowerCase()===name.toLowerCase()); const m=ex||await store.addMember(name); state.me={id:m.id,name:m.name}; setMe(state.code,state.me); await reload(); toast(ex?("Nazaj, "+m.name+"!"):("Živjo, "+m.name+"!")); }
 async function setThr(n){ n=Math.max(1,n); await store.setThreshold(n); await reload(); }
 async function copyShare(){ try{ await navigator.clipboard.writeText(shareURL()); toast("Povezava kopirana"); }catch(_){ const el=document.getElementById("shareLink"); if(el){el.select();} toast(shareURL()); } }
 async function copyOverview(){ try{ await navigator.clipboard.writeText(overviewURL()); toast("Povezava kopirana"); }catch(_){ const el=document.getElementById("ovLink"); if(el){el.select();} toast(overviewURL()); } }
+async function copyVoteLink(){ try{ await navigator.clipboard.writeText(voteURL()); toast("Povezava kopirana"); }catch(_){ const el=document.getElementById("voteLink"); if(el){el.select();} toast(voteURL()); } }
 
 $app.addEventListener("click", async (e)=>{
   const t=e.target.closest("[data-act]"); if(!t) return; const act=t.dataset.act;
@@ -427,16 +640,75 @@ $app.addEventListener("click", async (e)=>{
   if(act==="join"){ await doJoin(document.getElementById("nameInput").value); return; }
   if(act==="rename"){ openOverlay(renameOverlay()); return; }
   if(act==="saverename"){ const nn=document.getElementById("rn_name").value.trim(); if(!nn) return; await store.renameMember(state.me.id,nn); state.me.name=nn; setMe(state.code,state.me); closeOverlay(); await reload(); toast("Shranjeno"); return; }
-  if(act==="pday"){ if(!(await ensureMe())) return; await store.toggleBusy(state.me.id,t.dataset.d); await reload(); return; }
+  if(act==="pday"){
+    if(!(await ensureMe())) return;
+    try { await store.toggleBusy(state.me.id,t.dataset.d); } catch(err) { toast("Napaka pri označevanju: " + (err.message||err)); }
+    await reload(); return;
+  }
   if(act==="finish"){ if(!(await ensureMe())) return; setDone(state.code,true); try{window.scrollTo(0,0)}catch(e){} render(); return; }
   if(act==="edit"){ setDone(state.code,false); render(); return; }
   if(act==="rday"){ openOverlay(dayInfoOverlay(t.dataset.d)); return; }
   if(act==="members"){ openOverlay(membersOverlay()); return; }
+  if(act==="delmember"){ if(confirm("Želiš izbrisati tega uporabnika in vse njegove vnose?")) { await store.deleteMember(t.dataset.mid); if(state.me && state.me.id === t.dataset.mid){ localStorage.removeItem("ksd-me:"+state.code); state.me=null; } await reload(); openOverlay(membersOverlay()); } return; }
   if(act==="thrplus"){ await setThr((state.data.group.threshold||0)+1); return; }
   if(act==="thrminus"){ await setThr((state.data.group.threshold||0)-1); return; }
+  if(act==="selectme"){ state.me={id:t.dataset.mid,name:t.dataset.mname}; setMe(state.code,state.me); render(); return; }
+  if(act==="shownewme"){ state.showNewMember=true; render(); return; }
+  if(act==="hidenewme"){ state.showNewMember=false; render(); return; }
   if(act==="brk"){ state.showBrk=!state.showBrk; return; }
   if(act==="copyshare"){ await copyShare(); return; }
   if(act==="copyov"){ await copyOverview(); return; }
+  if(act==="copyvote"){ await copyVoteLink(); return; }
+  /* Glasovanje */
+  if(act==="startfinal"){
+    const d=state.data, thr=d.group.threshold||0, members=d.members, bs=busySet(), todayStr=L.ymd(new Date());
+    /* Zberi vse zelene dneve iz vseh mesecev od danes naprej (uporabimo 6 mesecev) */
+    const greenDays=[];
+    const startY=new Date().getFullYear(), startM=new Date().getMonth();
+    for(let off=0;off<6;off++){
+      let mi=(startM+off)%12, yi=startY+Math.floor((startM+off)/12);
+      const mdays=L.monthDays(yi,mi);
+      for(const ds of mdays){
+        if(ds<todayStr) continue;
+        const free=L.freeCountForDay(members,bs,ds);
+        if(L.isGreen(free,thr)) greenDays.push(ds);
+      }
+    }
+    if(!greenDays.length){ toast("Ni zelenih dni za glasovanje"); return; }
+    try{ await store.startFinalVote(greenDays); }catch(err){ toast("Napaka: "+(err.message||err)); return; }
+    setVoteDone(state.code,false);
+    await reload();
+    toast("Glasovanje začeto!");
+    return;
+  }
+  if(act==="cancelfinal"){
+    if(!confirm("Prekliči glasovanje? Vsi oddani glasovi bodo izbrisani.")) return;
+    try{ await store.cancelFinalVote(); }catch(err){ toast("Napaka: "+(err.message||err)); return; }
+    setVoteDone(state.code,false);
+    await reload();
+    toast("Glasovanje preklicano");
+    return;
+  }
+  if(act==="vday"){
+    if(!(await ensureMe())) return;
+    try{ await store.toggleVote(state.me.id,t.dataset.d); }catch(err){ toast("Napaka: "+(err.message||err)); }
+    await reload();
+    return;
+  }
+  if(act==="submitvote"){
+    if(!(await ensureMe())) return;
+    const myVotes=state.data.votes.filter(v=>v.member_id===state.me.id).length;
+    if(!myVotes){ toast("Izberi vsaj en dan"); return; }
+    setVoteDone(state.code,true);
+    try{window.scrollTo(0,0)}catch(e){}
+    render();
+    return;
+  }
+  if(act==="editvote"){
+    setVoteDone(state.code,false);
+    render();
+    return;
+  }
 });
 $app.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.id==="nameInput") doJoin(e.target.value); });
 
